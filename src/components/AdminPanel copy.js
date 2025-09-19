@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Upload, Eye, EyeOff, RefreshCw, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Upload, Eye, EyeOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAdminProducts } from '../hooks/useFirestore';
 import { useAuth } from '../contexts/AuthContext';
-import BulkImport from './BulkImport';
 
 // Componente ProductForm actualizado
 const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
@@ -534,7 +533,6 @@ const AdminPanel = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [notification, setNotification] = useState(null);
-  const [showBulkImport, setShowBulkImport] = useState(false);
 
   // Usar el hook de Firebase
   const { products, stats, loading, error, addProduct, updateProduct, deleteProduct } = useAdminProducts();
@@ -635,21 +633,12 @@ const AdminPanel = () => {
     setEditingProduct(null);
   };
 
-  const handleBulkImportComplete = (results) => {
-    showNotification(
-      `Importación completada: ${results.successful} productos agregados, ${results.failed} errores`,
-      results.failed > 0 ? 'warning' : 'success'
-    );
-    setShowBulkImport(false);
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
           notification.type === 'success' ? 'bg-green-100 text-green-800 border border-green-400' : 
-          notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border border-yellow-400' :
           'bg-red-100 text-red-800 border border-red-400'
         }`}>
           <div className="flex items-center">
@@ -701,30 +690,22 @@ const AdminPanel = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Gestión de Productos</h2>
           <div className="flex items-center space-x-3">
-          <button
-            onClick={() => window.location.reload()}
-            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
-            title="Actualizar datos"
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
-          <button
-            onClick={() => setShowBulkImport(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
-            title="Importación masiva desde Excel"
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Importar Excel
-          </button>
-          <button
-            onClick={handleAddProduct}
-            className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </button>
-        </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
+              title="Actualizar datos"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </button>
+            <button
+              onClick={handleAddProduct}
+              className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
+            </button>
+          </div>
         </div>
 
         {/* Lista de productos */}
@@ -743,14 +724,6 @@ const AdminPanel = () => {
           onSave={handleSaveProduct}
           onCancel={handleCancelForm}
           isEditing={!!editingProduct}
-        />
-      )}
-
-      {/* Bulk Import Modal */}
-      {showBulkImport && (
-        <BulkImport
-          onClose={() => setShowBulkImport(false)}
-          onImportComplete={handleBulkImportComplete}
         />
       )}
     </div>

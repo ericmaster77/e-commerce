@@ -3,7 +3,6 @@ import { ShoppingCart, User, Search, Menu, X, Plus, Minus, Star, Filter, MapPin,
 import AdminPanel from './components/AdminPanel';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useProducts, useFeaturedProducts, useDataInitialization } from './hooks/useFirestore';
-import { usePricing } from './hooks/usePricing';
 
 // Context para el carrito de compras (mantiene la misma lógica)
 const CartContext = createContext();
@@ -237,10 +236,6 @@ const Header = ({ currentView, setCurrentView }) => {
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
-  const { getPricingInfo, getPricingLevelText, getMembershipBenefits } = usePricing();
-
-  const pricingInfo = getPricingInfo(product);
-  const membershipBenefits = getMembershipBenefits(product);
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
@@ -254,22 +249,18 @@ const ProductCard = ({ product }) => {
           Destacado
         </div>
       )}
-      {pricingInfo?.hasDiscount && (
+      {product.discount > 0 && (
         <div className="bg-red-500 text-white text-xs px-2 py-1 absolute z-10 m-2 mt-8 rounded">
-          -{pricingInfo.discount}%
+          -{product.discount}%
         </div>
       )}
       
       <div className="relative h-48 bg-gray-200">
-        {product.imageUrl && product.imageUrl !== '/api/placeholder/300/300' && product.hasRealImage ? (
+        {product.imageUrl && product.imageUrl !== '/api/placeholder/300/300' ? (
           <img 
             src={product.imageUrl} 
             alt={product.name}
             className="w-full h-full object-cover"
-            onError={(e) => {
-              // Fallback a placeholder si la imagen falla
-              e.target.src = '/api/placeholder/300/300';
-            }}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
@@ -294,33 +285,11 @@ const ProductCard = ({ product }) => {
           <span className="text-sm text-gray-600 ml-2">({product.rating})</span>
         </div>
 
-        {/* Sistema de precios actualizado */}
         <div className="flex items-center justify-between mb-3">
           <div>
-            {/* Precio actual */}
-            <div className="flex items-center space-x-2">
-              <span className="text-lg font-bold text-gray-900">
-                ${pricingInfo?.current?.toLocaleString() || product.price?.toLocaleString()}
-              </span>
-              {pricingInfo?.hasDiscount && (
-                <span className="text-sm text-gray-500 line-through">
-                  ${pricingInfo.original?.toLocaleString()}
-                </span>
-              )}
-            </div>
-            
-            {/* Indicador del tipo de precio */}
-            {pricingInfo?.userLevel !== 'public' && (
-              <div className="text-xs text-blue-600 font-medium">
-                {getPricingLevelText()}
-              </div>
-            )}
-            
-            {/* Mostrar ahorros para usuarios no miembros */}
-            {pricingInfo?.userLevel === 'public' && membershipBenefits?.memberSavings > 0 && (
-              <div className="text-xs text-green-600">
-                Socios ahorran: ${membershipBenefits.memberSavings.toLocaleString()}
-              </div>
+            <span className="text-lg font-bold text-gray-900">${product.price.toLocaleString()}</span>
+            {product.discount > 0 && (
+              <span className="text-sm text-gray-500 line-through ml-2">${product.originalPrice.toLocaleString()}</span>
             )}
           </div>
           <span className="text-sm text-gray-600">{product.stock} disponibles</span>
