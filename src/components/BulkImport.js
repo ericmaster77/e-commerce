@@ -1,6 +1,6 @@
-// src/components/BulkImport.js
+// src/components/BulkImport.js - ACTUALIZADO CON VISTA PREVIA DE IMÁGENES
 import React, { useState } from 'react';
-import { Upload, File, AlertCircle, CheckCircle, X, Eye, Download, RefreshCw } from 'lucide-react';
+import { Upload, File, AlertCircle, CheckCircle, X, Eye, Download, RefreshCw, Image } from 'lucide-react';
 import { bulkImportService } from '../services/bulkImportService';
 
 const BulkImport = ({ onClose, onImportComplete }) => {
@@ -8,10 +8,11 @@ const BulkImport = ({ onClose, onImportComplete }) => {
   const [preview, setPreview] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [options, setOptions] = useState({
     markAsFeatured: false,
-    imageBaseUrl: 'gs://rosa-oliva-ecommerce.firebasestorage.app', // URL base para imágenes
-    defaultToPlaceholder: true // Usar placeholder si no hay imagen
+    imageBaseUrl: 'gs://rosa-oliva-ecommerce.firebasestorage.app',
+    defaultToPlaceholder: true
   });
 
   const handleFileSelect = async (e) => {
@@ -24,25 +25,36 @@ const BulkImport = ({ onClose, onImportComplete }) => {
     }
 
     setFile(selectedFile);
+    setIsGeneratingPreview(true);
     
-    // Generar preview
+    // Generar preview CON imágenes
     try {
+      console.log('📊 Generando vista previa con imágenes...');
       const previewResult = await bulkImportService.previewImport(selectedFile, 5);
+      
       if (previewResult.success) {
         setPreview(previewResult);
+        console.log(`✅ Vista previa generada: ${previewResult.validProducts} productos válidos`);
       } else {
         alert(`Error al leer archivo: ${previewResult.error}`);
       }
     } catch (error) {
       console.error('Error en preview:', error);
       alert('Error al procesar el archivo');
+    } finally {
+      setIsGeneratingPreview(false);
     }
   };
 
   const handleImport = async () => {
     if (!file) return;
 
-    if (!window.confirm(`¿Estás seguro de importar ${preview?.totalRows || 0} productos? Esta acción no se puede deshacer.`)) {
+    const hasImagesCount = preview?.preview?.filter(p => p.hasRealImage || p.imagePreview).length || 0;
+    const confirmMessage = `¿Estás seguro de importar ${preview?.totalRows || 0} productos?\n\n` +
+      `📸 ${hasImagesCount} productos tienen imágenes\n` +
+      `⚠️ Esta acción no se puede deshacer.`;
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -50,6 +62,7 @@ const BulkImport = ({ onClose, onImportComplete }) => {
     setImportResults(null);
 
     try {
+      console.log('🚀 Iniciando importación masiva con imágenes...');
       const result = await bulkImportService.importProductsFromExcel(file, options);
       setImportResults(result);
       
@@ -71,16 +84,26 @@ const BulkImport = ({ onClose, onImportComplete }) => {
     setFile(null);
     setPreview(null);
     setImportResults(null);
+    setIsGeneratingPreview(false);
+    
+    // Limpiar URLs de objetos creadas para vista previa
+    if (preview?.preview) {
+      preview.preview.forEach(product => {
+        if (product.imagePreview) {
+          URL.revokeObjectURL(product.imagePreview);
+        }
+      });
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[95vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Importación Masiva de Productos</h2>
-            <p className="text-gray-600">Sube tu archivo Excel con el inventario</p>
+            <p className="text-gray-600">Sube tu archivo Excel con el inventario e imágenes embebidas</p>
           </div>
           <button 
             onClick={onClose}
@@ -96,10 +119,10 @@ const BulkImport = ({ onClose, onImportComplete }) => {
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
             <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Selecciona tu archivo Excel</h3>
-            <p className="text-gray-600 mb-4">Arrastra y suelta tu archivo .xlsx aquí, o</p>
+            <p className="text-gray-600 mb-4">Arrastra y suelta tu archivo .xlsx con imágenes embebidas</p>
             <label className="inline-flex items-center px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 cursor-pointer">
               <File className="w-5 h-5 mr-2" />
-              Seleccionar Archivo
+              Seleccionar Archivo Excel
               <input
                 type="file"
                 accept=".xlsx,.xls"
@@ -108,6 +131,11 @@ const BulkImport = ({ onClose, onImportComplete }) => {
               />
             </label>
             <p className="text-sm text-gray-500 mt-2">Formatos soportados: .xlsx, .xls (máximo 50MB)</p>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                💡 <strong>Tip:</strong> Asegúrate de que las imágenes estén embebidas en las celdas del Excel, no solo como vínculos.
+              </p>
+            </div>
           </div>
         )}
 
@@ -122,15 +150,22 @@ const BulkImport = ({ onClose, onImportComplete }) => {
                   Tamaño: {(file.size / 1024 / 1024).toFixed(2)} MB
                 </p>
                 {preview && (
-                  <p className="text-sm text-blue-700">
-                    {preview.totalRows} filas encontradas, {preview.validProducts} productos válidos
-                  </p>
+                  <div className="text-sm text-blue-700 mt-1">
+                    📊 {preview.totalRows} productos • ✅ {preview.validProducts} válidos • 
+                    📸 {preview.preview?.filter(p => p.hasRealImage || p.imagePreview).length || 0} con imagen
+                  </div>
+                )}
+                {isGeneratingPreview && (
+                  <div className="flex items-center text-sm text-blue-600 mt-2">
+                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                    Extrayendo imágenes y generando vista previa...
+                  </div>
                 )}
               </div>
               <button
                 onClick={resetImport}
                 className="text-blue-600 hover:text-blue-800"
-                disabled={isImporting}
+                disabled={isImporting || isGeneratingPreview}
               >
                 Cambiar archivo
               </button>
@@ -139,105 +174,114 @@ const BulkImport = ({ onClose, onImportComplete }) => {
         )}
 
         {/* Configuración de importación */}
-        {file && !importResults && (
+        {file && !importResults && !isGeneratingPreview && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Configuración de Importación</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  URL Base para Imágenes
-                </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center">
                 <input
-                  type="url"
-                  value={options.imageBaseUrl}
-                  onChange={(e) => setOptions({...options, imageBaseUrl: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  type="checkbox"
+                  id="markAsFeatured"
+                  checked={options.markAsFeatured}
+                  onChange={(e) => setOptions({...options, markAsFeatured: e.target.checked})}
+                  className="w-4 h-4 text-amber-600 border-gray-300 rounded"
                   disabled={isImporting}
-                  placeholder="https://storage.googleapis.com/rosa-oliva-images/"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  URL base donde están hospedadas las imágenes de productos
-                </p>
+                <label htmlFor="markAsFeatured" className="ml-2 text-sm text-gray-700">
+                  Marcar primeros 10 productos como destacados
+                </label>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="markAsFeatured"
-                    checked={options.markAsFeatured}
-                    onChange={(e) => setOptions({...options, markAsFeatured: e.target.checked})}
-                    className="w-4 h-4 text-amber-600 border-gray-300 rounded"
-                    disabled={isImporting}
-                  />
-                  <label htmlFor="markAsFeatured" className="ml-2 text-sm text-gray-700">
-                    Marcar primeros 10 productos como destacados
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="defaultToPlaceholder"
-                    checked={options.defaultToPlaceholder}
-                    onChange={(e) => setOptions({...options, defaultToPlaceholder: e.target.checked})}
-                    className="w-4 h-4 text-amber-600 border-gray-300 rounded"
-                    disabled={isImporting}
-                  />
-                  <label htmlFor="defaultToPlaceholder" className="ml-2 text-sm text-gray-700">
-                    Usar imagen placeholder si no hay imagen
-                  </label>
-                </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="defaultToPlaceholder"
+                  checked={options.defaultToPlaceholder}
+                  onChange={(e) => setOptions({...options, defaultToPlaceholder: e.target.checked})}
+                  className="w-4 h-4 text-amber-600 border-gray-300 rounded"
+                  disabled={isImporting}
+                />
+                <label htmlFor="defaultToPlaceholder" className="ml-2 text-sm text-gray-700">
+                  Usar placeholder si no hay imagen
+                </label>
               </div>
             </div>
           </div>
         )}
 
-        {/* Vista previa de productos */}
+        {/* Vista previa de productos CON IMÁGENES */}
         {preview && preview.preview && preview.preview.length > 0 && !importResults && (
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
               <Eye className="w-5 h-5 mr-2" />
-              Vista Previa (primeros 5 productos)
+              Vista Previa con Imágenes (primeros 5 productos)
             </h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
               {preview.preview.map((product, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{product.name}</h4>
-                      <p className="text-sm text-gray-600">{product.category} • {product.material}</p>
-                      <p className="text-sm text-gray-500 mt-1">{product.description.substring(0, 100)}...</p>
-                      {product.hasRealImage && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 mt-1">
-                          📸 Con imagen
-                        </span>
+                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white">
+                  <div className="flex items-start space-x-4">
+                    {/* Vista previa de imagen */}
+                    <div className="w-20 h-20 flex-shrink-0">
+                      {product.imagePreview ? (
+                        <div className="relative">
+                          <img 
+                            src={product.imagePreview} 
+                            alt={`Preview ${product.name}`}
+                            className="w-full h-full object-cover rounded-lg border-2 border-green-200"
+                          />
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <Image className="w-3 h-3 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                          <span className="text-amber-700 text-2xl">📦</span>
+                        </div>
                       )}
                     </div>
-                    <div className="text-right ml-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-green-600">
-                          Público: ${product.pricing.public.toLocaleString()}
-                        </p>
-                        <p className="text-sm text-blue-600">
-                          Miembros: ${product.pricing.member.toLocaleString()}
-                          {product.memberDiscount > 0 && (
-                            <span className="text-xs ml-1 bg-blue-100 text-blue-800 px-1 rounded">
-                              -{product.memberDiscount}%
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-sm text-purple-600">
-                          Mayoreo: ${product.pricing.wholesale.toLocaleString()}
-                          {product.wholesaleDiscount > 0 && (
-                            <span className="text-xs ml-1 bg-purple-100 text-purple-800 px-1 rounded">
-                              -{product.wholesaleDiscount}%
-                            </span>
-                          )}
-                        </p>
+
+                    {/* Información del producto */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 text-sm mb-1 truncate">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-gray-600 mb-2">
+                        {product.category} • {product.material} • SKU: {product.sku}
+                      </p>
+                      
+                      {/* Precios */}
+                      <div className="text-xs space-y-1 mb-2">
+                        <div className="flex justify-between">
+                          <span className="text-red-600 font-medium">Anaquel (Original):</span>
+                          <span className="font-bold">${product.originalPrice?.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-green-600 font-medium">Miembros (Default):</span>
+                          <span className="font-bold">${product.price?.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-blue-600 font-medium">Mayoreo:</span>
+                          <span className="font-bold">${product.wholesalePrice?.toLocaleString()}</span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-500 mt-2">Stock: {product.stock}</p>
-                      <p className="text-xs text-gray-400">SKU: {product.sku}</p>
+
+                      {/* Indicadores */}
+                      <div className="flex items-center space-x-2 text-xs">
+                        <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                          Stock: {product.stock}
+                        </span>
+                        {product.discount > 0 && (
+                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
+                            -{product.discount}%
+                          </span>
+                        )}
+                        {product.imagePreview && (
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded flex items-center">
+                            <Image className="w-3 h-3 mr-1" />
+                            Con imagen
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -262,21 +306,24 @@ const BulkImport = ({ onClose, onImportComplete }) => {
                   <h3 className={`font-semibold ${
                     importResults.success ? 'text-green-900' : 'text-red-900'
                   }`}>
-                    {importResults.success ? '¡Importación Completada!' : 'Error en la Importación'}
+                    {importResults.success ? '🎉 ¡Importación Completada!' : '❌ Error en la Importación'}
                   </h3>
                   
                   {importResults.success && importResults.results && (
-                    <div className="mt-2">
+                    <div className="mt-2 space-y-1">
                       <p className="text-green-800">
-                        ✅ {importResults.results.successful} productos importados exitosamente
+                        ✅ <strong>{importResults.results.successful}</strong> productos importados exitosamente
+                      </p>
+                      <p className="text-green-700">
+                        📸 <strong>{importResults.results.imagesUploaded}</strong> de <strong>{importResults.results.imagesProcessed}</strong> imágenes subidas
                       </p>
                       {importResults.results.failed > 0 && (
                         <p className="text-orange-800">
-                          ⚠️ {importResults.results.failed} productos con errores
+                          ⚠️ <strong>{importResults.results.failed}</strong> productos con errores
                         </p>
                       )}
-                      <p className="text-green-700 text-sm">
-                        Total procesado: {importResults.results.total} productos
+                      <p className="text-green-600 text-sm">
+                        📊 Total procesado: <strong>{importResults.results.total}</strong> productos
                       </p>
                     </div>
                   )}
@@ -331,7 +378,7 @@ const BulkImport = ({ onClose, onImportComplete }) => {
               {importResults ? 'Cerrar' : 'Cancelar'}
             </button>
             
-            {file && !importResults && (
+            {file && !importResults && !isGeneratingPreview && (
               <button
                 onClick={handleImport}
                 disabled={isImporting || !preview}
@@ -346,6 +393,11 @@ const BulkImport = ({ onClose, onImportComplete }) => {
                   <>
                     <Upload className="w-4 h-4 mr-2" />
                     Importar {preview?.totalRows || 0} Productos
+                    {preview && preview.preview?.filter(p => p.imagePreview).length > 0 && (
+                      <span className="ml-2 px-2 py-1 bg-amber-700 rounded text-xs">
+                        📸 Con Imágenes
+                      </span>
+                    )}
                   </>
                 )}
               </button>
@@ -356,12 +408,16 @@ const BulkImport = ({ onClose, onImportComplete }) => {
         {/* Barra de progreso durante importación */}
         {isImporting && (
           <div className="mt-4">
-            <div className="bg-gray-200 rounded-full h-2">
-              <div className="bg-amber-600 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
+            <div className="bg-gray-200 rounded-full h-3">
+              <div className="bg-amber-600 h-3 rounded-full animate-pulse" style={{width: '100%'}}></div>
             </div>
-            <p className="text-sm text-gray-600 mt-2 text-center">
-              Procesando productos... Esto puede tomar varios minutos.
-            </p>
+            <div className="flex justify-between text-sm text-gray-600 mt-2">
+              <span>Procesando productos e imágenes...</span>
+              <span>Esto puede tomar varios minutos</span>
+            </div>
+            <div className="text-center text-xs text-gray-500 mt-2">
+              💡 Las imágenes se están extrayendo del Excel y subiendo a Firebase Storage
+            </div>
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+// src/services/productService.js - ACTUALIZADO CON FIREBASE STORAGE
 import { db } from '../firebase/config';
 import { 
   collection, 
@@ -12,6 +13,7 @@ import {
   serverTimestamp,
   onSnapshot
 } from 'firebase/firestore';
+import { storageService } from './storageService';
 
 export const productService = {
   // Obtener todos los productos
@@ -38,7 +40,7 @@ export const productService = {
     }
   },
 
-  // Agregar producto
+  // Agregar producto básico (sin imagen)
   async addProduct(product) {
     try {
       const docRef = await addDoc(collection(db, 'products'), {
@@ -53,7 +55,7 @@ export const productService = {
     }
   },
 
-  // Actualizar producto
+  // Actualizar producto básico
   async updateProduct(id, updates) {
     try {
       const productRef = doc(db, 'products', id);
@@ -68,7 +70,7 @@ export const productService = {
     }
   },
 
-  // Eliminar producto
+  // Eliminar producto básico
   async deleteProduct(id) {
     try {
       await deleteDoc(doc(db, 'products', id));
@@ -149,64 +151,151 @@ export const productService = {
     });
   },
 
-  // Funciones específicas para administradores
+  // =================== FUNCIONES DE ADMINISTRACIÓN CON FIREBASE STORAGE ===================
+
+  // Crear producto completo (con imagen) - SOLO ADMIN
   async createProductAdmin(productData, imageFile) {
     try {
-      let imageUrl = '';
+      console.log('🔄 Creando producto con imagen...');
       
-      // Si hay imagen, subirla primero (implementaremos después)
-      if (imageFile) {
-        // Por ahora usar placeholder
-        imageUrl = '/api/placeholder/300/300';
-      }
-
-      // Crear producto en Firestore
+      // Primero crear el producto para obtener un ID
       const docRef = await addDoc(collection(db, 'products'), {
         ...productData,
-        imageUrl,
+        imageUrl: '/api/placeholder/300/300', // Placeholder temporal
+        hasRealImage: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        createdBy: 'admin' // En producción sería el userId del admin
+        createdBy: 'admin'
       });
 
-      return { success: true, id: docRef.id, imageUrl };
+      let finalImageUrl = '/api/placeholder/300/300';
+      let hasRealImage = false;
+
+      // Si hay imagen, subirla usando el ID real del producto
+      if (imageFile) {
+        console.log(`📤 Subiendo imagen para producto ${docRef.id}`);
+        
+        // Validar imagen
+        const validation = storageService.isValidImage(imageFile);
+        if (!validation.isValid) {
+          console.warn(`⚠️ Imagen inválida: ${validation.error}`);
+        } else {
+          // Subir imagen a Firebase Storage
+          const uploadResult = await storageService.uploadProductImage(imageFile, docRef.id);
+          
+          if (uploadResult.success) {
+            finalImageUrl = uploadResult.url;
+            hasRealImage = true;
+            console.log(`✅ Imagen subida exitosamente: ${finalImageUrl}`);
+            
+            // Actualizar producto con la URL real de la imagen
+            await updateDoc(docRef, {
+              imageUrl: finalImageUrl,
+              hasRealImage: true,
+              imagePath: uploadResult.path,
+              imageSize: uploadResult.size,
+              updatedAt: serverTimestamp()
+            });
+          } else {
+            console.error(`❌ Error subiendo imagen: ${uploadResult.error}`);
+          }
+        }
+      }
+
+      return { 
+        success: true, 
+        id: docRef.id, 
+        imageUrl: finalImageUrl,
+        hasRealImage
+      };
     } catch (error) {
       console.error('Error al crear producto (admin):', error);
       return { success: false, error: error.message };
     }
   },
 
-  // Actualizar producto (solo admin)
+  // Actualizar producto completo (con manejo de imagen) - SOLO ADMIN
   async updateProductAdmin(id, updates, newImageFile, oldImageUrl) {
     try {
-      let imageUrl = oldImageUrl;
+      console.log(`🔄 Actualizando producto ${id}...`);
+      
+      let finalImageUrl = oldImageUrl || '/api/placeholder/300/300';
+      let hasRealImage = !!(oldImageUrl && !oldImageUrl.includes('placeholder'));
 
-      // Si hay nueva imagen, usar placeholder por ahora
+      // Si hay nueva imagen
       if (newImageFile) {
-        imageUrl = '/api/placeholder/300/300';
+        console.log(`📤 Subiendo nueva imagen para producto ${id}`);
+        
+        // Validar nueva imagen
+        const validation = storageService.isValidImage(newImageFile);
+        if (!validation.isValid) {
+          console.warn(`⚠️ Nueva imagen inválida: ${validation.error}`);
+        } else {
+          // Subir nueva imagen
+          const uploadResult = await storageService.uploadProductImage(newImageFile, id);
+          
+          if (uploadResult.success) {
+            // Eliminar imagen anterior si existe y no es placeholder
+            if (oldImageUrl && !oldImageUrl.includes('placeholder')) {
+              console.log('🗑️ Eliminando imagen anterior...');
+              await storageService.deleteImageByUrl(oldImageUrl);
+            }
+            
+            finalImageUrl = uploadResult.url;
+            hasRealImage = true;
+            
+            // Agregar información de imagen a las actualizaciones
+            updates.imagePath = uploadResult.path;
+            updates.imageSize = uploadResult.size;
+            
+            console.log(`✅ Nueva imagen subida: ${finalImageUrl}`);
+          } else {
+            console.error(`❌ Error subiendo nueva imagen: ${uploadResult.error}`);
+            // Mantener imagen anterior en caso de error
+          }
+        }
       }
 
-      // Actualizar en Firestore
+      // Actualizar producto en Firestore
       const productRef = doc(db, 'products', id);
       await updateDoc(productRef, {
         ...updates,
-        imageUrl,
+        imageUrl: finalImageUrl,
+        hasRealImage,
         updatedAt: serverTimestamp()
       });
 
-      return { success: true, imageUrl };
+      return { 
+        success: true, 
+        imageUrl: finalImageUrl,
+        hasRealImage
+      };
     } catch (error) {
       console.error('Error al actualizar producto (admin):', error);
       return { success: false, error: error.message };
     }
   },
 
-  // Eliminar producto (solo admin)
+  // Eliminar producto completo (con imagen) - SOLO ADMIN
   async deleteProductAdmin(id, imageUrl) {
     try {
-      // Por ahora solo eliminar el producto
-      // En el futuro aquí eliminaremos también la imagen de Storage
+      console.log(`🗑️ Eliminando producto ${id}...`);
+      
+      // Eliminar imagen si existe y no es placeholder
+      if (imageUrl && !imageUrl.includes('placeholder')) {
+        console.log('🗑️ Eliminando imagen asociada...');
+        const deleteResult = await storageService.deleteImageByUrl(imageUrl);
+        if (!deleteResult.success) {
+          console.warn(`⚠️ No se pudo eliminar imagen: ${deleteResult.error}`);
+        } else {
+          console.log('✅ Imagen eliminada correctamente');
+        }
+      }
+
+      // Eliminar producto de Firestore
       await deleteDoc(doc(db, 'products', id));
+      
+      console.log(`✅ Producto ${id} eliminado completamente`);
       return { success: true };
     } catch (error) {
       console.error('Error al eliminar producto (admin):', error);
@@ -230,16 +319,27 @@ export const productService = {
         });
       });
 
+      // Estadísticas básicas
       const stats = {
         totalProducts: products.length,
         totalStock: products.reduce((sum, p) => sum + (p.stock || 0), 0),
         totalValue: products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0),
         featuredCount: products.filter(p => p.featured).length,
         outOfStock: products.filter(p => (p.stock || 0) === 0).length,
+        withRealImages: products.filter(p => p.hasRealImage).length,
         byCategory: products.reduce((acc, p) => {
           acc[p.category] = (acc[p.category] || 0) + 1;
           return acc;
         }, {})
+      };
+
+      // Estadísticas de imágenes
+      stats.imageStats = {
+        withImages: stats.withRealImages,
+        withPlaceholder: stats.totalProducts - stats.withRealImages,
+        imagePercentage: stats.totalProducts > 0 
+          ? Math.round((stats.withRealImages / stats.totalProducts) * 100) 
+          : 0
       };
 
       return { success: true, stats, products };
@@ -249,7 +349,7 @@ export const productService = {
     }
   },
 
-  // Función para inicializar productos de ejemplo (usar solo una vez)
+  // Función para inicializar productos de ejemplo
   async seedInitialProducts() {
     try {
       const sampleProducts = [
@@ -263,7 +363,13 @@ export const productService = {
           rating: 4.8,
           stock: 15,
           featured: true,
-          imageUrl: "/api/placeholder/300/300"
+          imageUrl: "/api/placeholder/300/300",
+          hasRealImage: false,
+          pricing: {
+            public: 3500,
+            member: 2500,
+            wholesale: 2000
+          }
         },
         {
           name: "Anillo Esmeralda Premium",
@@ -275,7 +381,13 @@ export const productService = {
           rating: 4.9,
           stock: 8,
           featured: true,
-          imageUrl: "/api/placeholder/300/300"
+          imageUrl: "/api/placeholder/300/300",
+          hasRealImage: false,
+          pricing: {
+            public: 5600,
+            member: 4200,
+            wholesale: 3500
+          }
         },
         {
           name: "Collar Perlas Naturales",
@@ -287,7 +399,13 @@ export const productService = {
           rating: 4.7,
           stock: 12,
           featured: false,
-          imageUrl: "/api/placeholder/300/300"
+          imageUrl: "/api/placeholder/300/300",
+          hasRealImage: false,
+          pricing: {
+            public: 4800,
+            member: 3800,
+            wholesale: 3200
+          }
         },
         {
           name: "Aretes Diamantes Deluxe",
@@ -299,7 +417,13 @@ export const productService = {
           rating: 5.0,
           stock: 5,
           featured: true,
-          imageUrl: "/api/placeholder/300/300"
+          imageUrl: "/api/placeholder/300/300",
+          hasRealImage: false,
+          pricing: {
+            public: 8000,
+            member: 6500,
+            wholesale: 5500
+          }
         },
         {
           name: "Pulsera Oro Rosa",
@@ -311,7 +435,13 @@ export const productService = {
           rating: 4.6,
           stock: 20,
           featured: false,
-          imageUrl: "/api/placeholder/300/300"
+          imageUrl: "/api/placeholder/300/300",
+          hasRealImage: false,
+          pricing: {
+            public: 2200,
+            member: 1800,
+            wholesale: 1500
+          }
         },
         {
           name: "Gargantilla Minimalista",
@@ -323,7 +453,13 @@ export const productService = {
           rating: 4.5,
           stock: 25,
           featured: false,
-          imageUrl: "/api/placeholder/300/300"
+          imageUrl: "/api/placeholder/300/300",
+          hasRealImage: false,
+          pricing: {
+            public: 1500,
+            member: 1200,
+            wholesale: 1000
+          }
         }
       ];
 
@@ -341,10 +477,21 @@ export const productService = {
       const successful = results.filter(r => r.success).length;
       return { 
         success: true, 
-        message: `${successful} productos agregados exitosamente` 
+        message: `${successful} productos de ejemplo agregados exitosamente` 
       };
     } catch (error) {
       console.error('Error al inicializar productos:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Función para limpiar imágenes huérfanas (mantenimiento)
+  async cleanupOrphanedImages() {
+    try {
+      // Esta función se implementaría para limpiar imágenes que ya no están asociadas a productos
+      console.log('🧹 Función de limpieza de imágenes huérfanas - Por implementar');
+      return { success: true, message: 'Función por implementar' };
+    } catch (error) {
       return { success: false, error: error.message };
     }
   }
