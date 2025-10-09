@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Save, X, Upload, Eye, EyeOff, RefreshCw, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { useAdminProducts } from '../hooks/useFirestore';
 import { useAuth } from '../contexts/AuthContext';
+import { productService } from '../services/productService';
 import BulkImport from './BulkImport';
 
-// Componente ProductForm actualizado
+// Componente ProductForm - CORREGIDO
 const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
   const [formData, setFormData] = useState({
     name: product?.name || '',
@@ -31,7 +32,6 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
     
-    // Limpiar error si existe
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -40,13 +40,11 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validar tamaño del archivo (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setErrors(prev => ({ ...prev, image: 'La imagen debe ser menor a 5MB' }));
         return;
       }
 
-      // Validar tipo de archivo
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         setErrors(prev => ({ ...prev, image: 'Solo se permiten imágenes JPG, PNG o WebP' }));
@@ -97,14 +95,14 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
         ? Math.round(((formData.originalPrice - formData.price) / formData.originalPrice) * 100)
         : 0;
       
+      // ✅ CORRECCIÓN: NO incluir campo 'id', Firebase lo genera automáticamente
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
         originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : 0,
         stock: parseInt(formData.stock),
         discount,
-        rating: product?.rating || 4.5,
-        id: product?.id || Date.now()
+        rating: product?.rating || 4.5
       };
       
       await onSave(productData, selectedImageFile);
@@ -351,7 +349,7 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
   );
 };
 
-// Componente ProductList actualizado
+// Componente ProductList - CORREGIDO
 const ProductList = ({ products, onEdit, onDelete, loading }) => {
   const [showHidden, setShowHidden] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -359,36 +357,89 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
   
   const categories = ['Todos', ...new Set(products.map(p => p.category))];
   
-  // Filtros
   let filteredProducts = products;
   
-  // Filtro de stock
   if (!showHidden) {
     filteredProducts = filteredProducts.filter(p => p.stock > 0);
   }
   
-  // Filtro de búsqueda
   if (searchTerm) {
     filteredProducts = filteredProducts.filter(p => 
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase())
+      p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }
   
-  // Filtro de categoría
   if (selectedCategory !== 'Todos') {
     filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
   }
 
+  const ProductImage = ({ product }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    const handleImageLoad = () => {
+      setImageLoading(false);
+      setImageError(false);
+    };
+
+    const handleImageError = () => {
+      setImageLoading(false);
+      setImageError(true);
+    };
+
+    const shouldShowRealImage = product.hasRealImage && 
+      product.imageUrl && 
+      !product.imageUrl.includes('placeholder') && 
+      !imageError;
+
+    return (
+      <div className="w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden border-2 border-gray-200">
+        {shouldShowRealImage ? (
+          <>
+            {imageLoading && (
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+                <div className="animate-pulse">
+                  <div className="text-amber-700 text-lg">📸</div>
+                </div>
+              </div>
+            )}
+            <img 
+              src={product.imageUrl}
+              alt={product.name}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                imageLoading ? 'opacity-0' : 'opacity-100'
+              }`}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+            {!imageError && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-amber-700 text-2xl">✨</div>
+              <div className="text-xs text-amber-600">Rosa</div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
-      {/* Controles y filtros */}
       <div className="mb-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Buscar productos..."
+              placeholder="Buscar productos por nombre, descripción o SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
@@ -409,7 +460,7 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
           
           <button
             onClick={() => setShowHidden(!showHidden)}
-            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
+            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg whitespace-nowrap"
           >
             {showHidden ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
             {showHidden ? 'Ocultar sin stock' : 'Mostrar sin stock'}
@@ -429,41 +480,56 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
         </div>
       </div>
 
-      {/* Lista de productos */}
       <div className="space-y-4 max-h-96 overflow-y-auto">
         {filteredProducts.map(product => (
           <div key={product.id} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start space-x-4">
-              {/* Imagen */}
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                {product.imageUrl && product.imageUrl !== '/api/placeholder/300/300' ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <div className="text-amber-700 text-2xl">✨</div>
-                )}
-              </div>
+              <ProductImage product={product} />
 
-              {/* Info */}
               <div className="flex-1">
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1 pr-4">
                     <h4 className="font-semibold text-gray-900 mb-1">{product.name}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{product.category}</p>
-                    <div className="flex items-center space-x-4 text-sm mb-2">
-                      <span className="font-semibold text-green-600">${product.price?.toLocaleString()}</span>
-                      {product.originalPrice > 0 && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 mb-1">
+                      <span>{product.category}</span>
+                      {product.sku && (
                         <>
-                          <span className="text-gray-500 line-through">${product.originalPrice?.toLocaleString()}</span>
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                            -{product.discount}%
-                          </span>
+                          <span>•</span>
+                          <span>SKU: {product.sku}</span>
                         </>
                       )}
                     </div>
+                    
+                    <div className="flex items-center space-x-4 text-sm mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold text-green-600">
+                          ${(product.pricing?.public || product.price || 0).toLocaleString()}
+                        </span>
+                        <span className="text-xs text-gray-500">Público</span>
+                      </div>
+                      
+                      {product.pricing?.member && (
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-blue-600">
+                            ${product.pricing.member.toLocaleString()}
+                          </span>
+                          <span className="text-xs text-gray-500">Socios</span>
+                        </div>
+                      )}
+                      
+                      {product.pricing?.wholesale && (
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-purple-600">
+                            ${product.pricing.wholesale.toLocaleString()}
+                          </span>
+                          <span className="text-xs text-gray-500">Mayoreo</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <p className="text-xs text-gray-600 line-clamp-2">{product.description}</p>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => onEdit(product)}
@@ -475,7 +541,11 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
                     <button
                       onClick={() => {
                         if (window.confirm(`¿Estás seguro de que deseas eliminar "${product.name}"?`)) {
-                          onDelete(product.id, product.imageUrl);
+                          // ✅ CORRECCIÓN: Validar imageUrl como string
+                          const imageUrlString = typeof product.imageUrl === 'string' 
+                            ? product.imageUrl 
+                            : '';
+                          onDelete(product.id, imageUrlString);
                         }
                       }}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
@@ -486,27 +556,38 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
                   </div>
                 </div>
 
-                {/* Status */}
-                <div className="flex items-center justify-between mt-2">
-                  <div className="flex items-center space-x-4 text-xs">
+                <div className="flex items-center justify-between mt-3">
+                  <div className="flex items-center space-x-2 text-xs">
                     <span className={`px-2 py-1 rounded ${
                       product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
                       Stock: {product.stock}
                     </span>
+                    
                     {product.featured && (
                       <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded">
                         Destacado
                       </span>
                     )}
+                    
+                    {product.hasRealImage && (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center">
+                        <span className="mr-1">📸</span>
+                        Con imagen
+                      </span>
+                    )}
+                    
                     <span className="text-gray-500">Rating: {product.rating}⭐</span>
                   </div>
                   
-                  {product.createdAt && (
-                    <div className="text-xs text-gray-500">
-                      Creado: {new Date(product.createdAt).toLocaleDateString()}
-                    </div>
-                  )}
+                  <div className="text-xs text-gray-500 space-x-2">
+                    {product.excel?.lote && (
+                      <span>Lote: {product.excel.lote}</span>
+                    )}
+                    {product.createdAt && (
+                      <span>Creado: {new Date(product.createdAt).toLocaleDateString()}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -529,18 +610,16 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
   );
 };
 
-// Componente principal AdminPanel actualizado
+// Componente principal AdminPanel
 const AdminPanel = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showBulkImport, setShowBulkImport] = useState(false);
 
-  // Usar el hook de Firebase
   const { products, stats, loading, error, addProduct, updateProduct, deleteProduct } = useAdminProducts();
   const { user, isAdmin } = useAuth();
 
-  // Verificar permisos de admin
   if (!isAdmin()) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -553,7 +632,6 @@ const AdminPanel = () => {
     );
   }
 
-  // Mostrar error si hay problemas con Firebase
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -591,13 +669,21 @@ const AdminPanel = () => {
     try {
       let result;
       if (editingProduct) {
-        // Editar producto existente
-        result = await updateProduct(editingProduct.id, productData, imageFile, editingProduct.imageUrl);
+        // ✅ CORRECCIÓN: Validar oldImageUrl como string
+        const oldImageUrl = typeof editingProduct.imageUrl === 'string' 
+          ? editingProduct.imageUrl 
+          : '';
+          
+        result = await updateProduct(
+          editingProduct.id, 
+          productData, 
+          imageFile, 
+          oldImageUrl
+        );
         if (result.success) {
           showNotification('Producto actualizado exitosamente');
         }
       } else {
-        // Agregar nuevo producto
         result = await addProduct(productData, imageFile);
         if (result.success) {
           showNotification('Producto creado exitosamente');
@@ -618,7 +704,10 @@ const AdminPanel = () => {
 
   const handleDeleteProduct = async (productId, imageUrl) => {
     try {
-      const result = await deleteProduct(productId, imageUrl);
+      // ✅ CORRECCIÓN: Validar imageUrl como string
+      const imageUrlString = typeof imageUrl === 'string' ? imageUrl : '';
+      
+      const result = await deleteProduct(productId, imageUrlString);
       if (result.success) {
         showNotification('Producto eliminado exitosamente');
       } else {
@@ -645,7 +734,6 @@ const AdminPanel = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
           notification.type === 'success' ? 'bg-green-100 text-green-800 border border-green-400' : 
@@ -659,7 +747,6 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -672,7 +759,6 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-gray-900">{stats.totalProducts || 0}</div>
@@ -696,38 +782,36 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Gestión de Productos</h2>
           <div className="flex items-center space-x-3">
-          <button
-            onClick={() => window.location.reload()}
-            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
-            title="Actualizar datos"
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
-          <button
-            onClick={() => setShowBulkImport(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
-            title="Importación masiva desde Excel"
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Importar Excel
-          </button>
-          <button
-            onClick={handleAddProduct}
-            className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </button>
-        </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
+              title="Actualizar datos"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </button>
+            <button
+              onClick={() => setShowBulkImport(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              title="Importación masiva desde Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Importar Excel
+            </button>
+            <button
+              onClick={handleAddProduct}
+              className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
+            </button>
+          </div>
         </div>
 
-        {/* Lista de productos */}
         <ProductList 
           products={products}
           onEdit={handleEditProduct}
@@ -736,7 +820,6 @@ const AdminPanel = () => {
         />
       </div>
 
-      {/* Form Modal */}
       {showForm && (
         <ProductForm
           product={editingProduct}
@@ -746,7 +829,6 @@ const AdminPanel = () => {
         />
       )}
 
-      {/* Bulk Import Modal */}
       {showBulkImport && (
         <BulkImport
           onClose={() => setShowBulkImport(false)}

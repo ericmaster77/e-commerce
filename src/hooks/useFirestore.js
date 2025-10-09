@@ -137,82 +137,119 @@ export const useProductsByCategory = (category) => {
 };
 
 // Hook para administración con tiempo real
+// Hook para administración con tiempo real - CORREGIDO
+// Hook para administración con tiempo real - VERSIÓN COMPLETA CORREGIDA
+// Hook para administración - VERSIÓN CON RECARGA FORZADA
+// Reemplaza el hook useAdminProducts en src/hooks/useFirestore.js
+
 export const useAdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [forceReload, setForceReload] = useState(0);
+
+  // Función para calcular estadísticas
+  const calculateStats = (products) => {
+    return {
+      totalProducts: products.length,
+      totalStock: products.reduce((sum, p) => sum + (p.stock || 0), 0),
+      totalValue: products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0),
+      featuredCount: products.filter(p => p.featured).length,
+      outOfStock: products.filter(p => (p.stock || 0) === 0).length,
+      byCategory: products.reduce((acc, p) => {
+        acc[p.category] = (acc[p.category] || 0) + 1;
+        return acc;
+      }, {})
+    };
+  };
 
   useEffect(() => {
     let unsubscribe;
 
     const setupRealtimeListener = () => {
-      // Configurar listener en tiempo real
-      unsubscribe = productService.onProductsChange((products) => {
-        setProducts(products);
-        
-        // Calcular estadísticas
-        const newStats = {
-          totalProducts: products.length,
-          totalStock: products.reduce((sum, p) => sum + (p.stock || 0), 0),
-          totalValue: products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0),
-          featuredCount: products.filter(p => p.featured).length,
-          outOfStock: products.filter(p => (p.stock || 0) === 0).length,
-          byCategory: products.reduce((acc, p) => {
-            acc[p.category] = (acc[p.category] || 0) + 1;
-            return acc;
-          }, {})
-        };
-        
-        setStats(newStats);
+      console.log('🔄 Configurando listener en tiempo real para productos...');
+      
+      try {
+        unsubscribe = productService.onProductsChange((fetchedProducts) => {
+          console.log(`📦 Listener actualizado: ${fetchedProducts.length} productos`);
+          console.log('📋 IDs de productos:', fetchedProducts.map(p => p.id));
+          
+          setProducts(fetchedProducts);
+          setStats(calculateStats(fetchedProducts));
+          setLoading(false);
+          setError(null);
+        });
+      } catch (err) {
+        console.error('❌ Error configurando listener:', err);
+        setError(err.message);
         setLoading(false);
-        setError(null);
-      });
-    };
-
-    // Función de fallback si el tiempo real falla
-    const fetchProductsOnce = async () => {
-      const result = await productService.getProductStats();
-      if (result.success) {
-        setProducts(result.products);
-        setStats(result.stats);
-        setError(null);
-      } else {
-        setError(result.error);
       }
-      setLoading(false);
     };
 
-    try {
-      setupRealtimeListener();
-    } catch (error) {
-      console.warn('Tiempo real no disponible, usando fetch único:', error);
-      fetchProductsOnce();
-    }
+    setupRealtimeListener();
 
-    // Cleanup
     return () => {
       if (unsubscribe) {
+        console.log('🔌 Desconectando listener de productos');
         unsubscribe();
       }
     };
-  }, []);
+  }, [forceReload]);
 
   const addProduct = async (productData, imageFile) => {
+    console.log('➕ Agregando nuevo producto...');
     const result = await productService.createProductAdmin(productData, imageFile);
-    // No necesitamos actualizar el estado manualmente porque el listener en tiempo real lo hará
+    
+    if (result.success) {
+      console.log(`✅ Producto creado con ID: ${result.id}`);
+      // Forzar recarga del listener
+      setTimeout(() => {
+        console.log('🔄 Forzando recarga de productos...');
+        setForceReload(prev => prev + 1);
+      }, 1000);
+    }
+    
     return result;
   };
 
   const updateProduct = async (id, updates, imageFile, oldImageUrl) => {
+    console.log(`✏️ Actualizando producto ${id}...`);
     const result = await productService.updateProductAdmin(id, updates, imageFile, oldImageUrl);
-    // El listener actualizará automáticamente
+    
+    if (result.success) {
+      console.log(`✅ Producto ${id} actualizado`);
+      // Forzar recarga
+      setTimeout(() => {
+        setForceReload(prev => prev + 1);
+      }, 1000);
+    }
+    
     return result;
   };
 
   const deleteProduct = async (id, imageUrl) => {
+    console.log(`🗑️ Hook: Iniciando eliminación de producto ${id}`);
     const result = await productService.deleteProductAdmin(id, imageUrl);
-    // El listener actualizará automáticamente
+    
+    if (result.success) {
+      console.log(`✅ Hook: Producto ${id} eliminado de Firestore`);
+      // Actualización inmediata en UI
+      setProducts(prevProducts => {
+        const filtered = prevProducts.filter(p => p.id !== id);
+        console.log(`📦 Hook: Productos después de filtrar: ${filtered.length}`);
+        setStats(calculateStats(filtered));
+        return filtered;
+      });
+      
+      // Forzar recarga del listener
+      setTimeout(() => {
+        setForceReload(prev => prev + 1);
+      }, 1000);
+    } else {
+      console.error(`❌ Hook: Error eliminando producto ${id}:`, result.error);
+    }
+    
     return result;
   };
 
@@ -223,10 +260,10 @@ export const useAdminProducts = () => {
     error,
     addProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    forceReload: () => setForceReload(prev => prev + 1)
   };
 };
-
 // Hook para inicialización de datos (usar solo una vez)
 export const useDataInitialization = () => {
   const [initializing, setInitializing] = useState(false);

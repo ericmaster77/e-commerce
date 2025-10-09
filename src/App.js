@@ -237,6 +237,8 @@ const Header = ({ currentView, setCurrentView }) => {
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const { getPricingInfo, getPricingLevelText, getMembershipBenefits } = usePricing();
 
   const pricingInfo = getPricingInfo(product);
@@ -246,6 +248,28 @@ const ProductCard = ({ product }) => {
     addToCart(product, quantity);
     setQuantity(1);
   };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  // Determinar qué imagen mostrar
+  const getImageToShow = () => {
+    // Si hay imagen real y no ha fallado
+    if (product.hasRealImage && product.imageUrl && !product.imageUrl.includes('placeholder') && !imageError) {
+      return product.imageUrl;
+    }
+    // Fallback a placeholder
+    return null;
+  };
+
+  const imageToShow = getImageToShow();
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
@@ -261,19 +285,37 @@ const ProductCard = ({ product }) => {
       )}
       
       <div className="relative h-48 bg-gray-200">
-        {product.imageUrl && product.imageUrl !== '/api/placeholder/300/300' && product.hasRealImage ? (
-          <img 
-            src={product.imageUrl} 
-            alt={product.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              // Fallback a placeholder si la imagen falla
-              e.target.src = '/api/placeholder/300/300';
-            }}
-          />
+        {imageToShow ? (
+          <div className="relative w-full h-full">
+            {imageLoading && (
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+                <div className="animate-pulse">
+                  <div className="text-amber-700 text-4xl">📸</div>
+                  <div className="text-xs text-amber-600 mt-2">Cargando...</div>
+                </div>
+              </div>
+            )}
+            <img 
+              src={imageToShow} 
+              alt={product.name}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                imageLoading ? 'opacity-0' : 'opacity-100'
+              }`}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+            {product.hasRealImage && !imageError && (
+              <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
+                📸
+              </div>
+            )}
+          </div>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
-            <div className="text-amber-700 text-6xl">✨</div>
+            <div className="text-center">
+              <div className="text-amber-700 text-6xl mb-2">✨</div>
+              <div className="text-amber-700 text-xs">Rosa Oliva</div>
+            </div>
           </div>
         )}
       </div>
@@ -294,32 +336,40 @@ const ProductCard = ({ product }) => {
           <span className="text-sm text-gray-600 ml-2">({product.rating})</span>
         </div>
 
-        {/* Sistema de precios actualizado */}
+        {/* Sistema de precios CORREGIDO - Anaquel como precio principal */}
         <div className="flex items-center justify-between mb-3">
           <div>
-            {/* Precio actual */}
+            {/* Precio principal (Anaquel = público) */}
             <div className="flex items-center space-x-2">
               <span className="text-lg font-bold text-gray-900">
-                ${pricingInfo?.current?.toLocaleString() || product.price?.toLocaleString()}
+                ${(product.price || product.pricing?.public || 0).toLocaleString()}
               </span>
-              {pricingInfo?.hasDiscount && (
+              {/* Mostrar precio original solo si hay descuento real */}
+              {product.originalPrice > 0 && product.originalPrice > product.price && (
                 <span className="text-sm text-gray-500 line-through">
-                  ${pricingInfo.original?.toLocaleString()}
+                  ${product.originalPrice.toLocaleString()}
                 </span>
               )}
             </div>
             
-            {/* Indicador del tipo de precio */}
-            {pricingInfo?.userLevel !== 'public' && (
-              <div className="text-xs text-blue-600 font-medium">
-                {getPricingLevelText()}
-              </div>
-            )}
+            {/* Indicador del tipo de precio actual */}
+            <div className="text-xs text-blue-600 font-medium">
+              {getPricingLevelText()}
+            </div>
             
             {/* Mostrar ahorros para usuarios no miembros */}
             {pricingInfo?.userLevel === 'public' && membershipBenefits?.memberSavings > 0 && (
               <div className="text-xs text-green-600">
                 Socios ahorran: ${membershipBenefits.memberSavings.toLocaleString()}
+              </div>
+            )}
+
+            {/* Mostrar los 3 precios para referencia (opcional) */}
+            {product.pricing && (
+              <div className="text-xs text-gray-500 mt-1 space-y-1">
+                <div>Público: ${product.pricing.public?.toLocaleString()}</div>
+                <div>Socios: ${product.pricing.member?.toLocaleString()}</div>
+                <div>Mayoreo: ${product.pricing.wholesale?.toLocaleString()}</div>
               </div>
             )}
           </div>
@@ -355,6 +405,14 @@ const ProductCard = ({ product }) => {
             {product.stock === 0 ? 'Agotado' : 'Agregar'}
           </button>
         </div>
+
+        {/* Información adicional del producto (SKU, etc.) */}
+        {product.sku && (
+          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+            SKU: {product.sku}
+            {product.excel?.lote && ` • Lote: ${product.excel.lote}`}
+          </div>
+        )}
       </div>
     </div>
   );

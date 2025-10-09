@@ -1,4 +1,4 @@
-// src/services/storageService.js
+// src/services/storageService.js - VERSIÓN CORREGIDA COMPLETA
 import { storage } from '../firebase/config';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -12,6 +12,7 @@ export const storageService = {
       const imageRef = ref(storage, `products/${fileName}`);
       
       console.log(`📤 Subiendo imagen: ${fileName}`);
+      console.log(`📏 Tamaño del archivo: ${file.size} bytes`);
       
       // Subir archivo
       const snapshot = await uploadBytes(imageRef, file, {
@@ -25,13 +26,17 @@ export const storageService = {
       // Obtener URL de descarga
       const downloadURL = await getDownloadURL(snapshot.ref);
       
+      // ✅ SOLUCIÓN: Usar file.size directamente
+      const fileSize = file.size || 0;
+      
       console.log(`✅ Imagen subida exitosamente: ${downloadURL}`);
+      console.log(`📏 Tamaño guardado: ${fileSize} bytes`);
       
       return { 
         success: true, 
         url: downloadURL,
         path: snapshot.ref.fullPath,
-        size: snapshot.totalBytes
+        size: fileSize  // ✅ GARANTIZADO que no es undefined
       };
     } catch (error) {
       console.error('❌ Error subiendo imagen:', error);
@@ -51,6 +56,7 @@ export const storageService = {
       const imageRef = ref(storage, `products/${fileName}`);
       
       console.log(`📤 Subiendo imagen desde blob: ${fileName}`);
+      console.log(`📏 Tamaño del blob: ${blob.size} bytes`);
       
       const snapshot = await uploadBytes(imageRef, blob, {
         contentType: blob.type,
@@ -63,13 +69,17 @@ export const storageService = {
       
       const downloadURL = await getDownloadURL(snapshot.ref);
       
+      // ✅ SOLUCIÓN: Usar blob.size directamente
+      const blobSize = blob.size || 0;
+      
       console.log(`✅ Imagen desde blob subida: ${downloadURL}`);
+      console.log(`📏 Tamaño guardado: ${blobSize} bytes`);
       
       return { 
         success: true, 
         url: downloadURL,
         path: snapshot.ref.fullPath,
-        size: snapshot.totalBytes
+        size: blobSize  // ✅ GARANTIZADO que no es undefined
       };
     } catch (error) {
       console.error('❌ Error subiendo imagen desde blob:', error);
@@ -83,7 +93,7 @@ export const storageService = {
   // Subir múltiples imágenes en lote
   async uploadMultipleImages(imageBlobs, productIds) {
     const results = [];
-    const batchSize = 5; // Subir de 5 en 5 para no saturar
+    const batchSize = 5;
     
     for (let i = 0; i < imageBlobs.length; i += batchSize) {
       const batch = imageBlobs.slice(i, i + batchSize);
@@ -102,7 +112,6 @@ export const storageService = {
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
       
-      // Pausa entre lotes
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
@@ -129,16 +138,23 @@ export const storageService = {
   // Eliminar imagen por URL
   async deleteImageByUrl(imageUrl) {
     try {
-      if (!imageUrl || imageUrl.includes('placeholder')) {
-        return { success: true }; // No hay nada que eliminar
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        console.log('⚠️ URL de imagen inválida o vacía');
+        return { success: true };
       }
 
-      // Extraer path de la URL de Firebase Storage
+      if (imageUrl.includes('placeholder') || imageUrl.includes('/api/')) {
+        console.log('⚠️ Imagen placeholder, no se elimina');
+        return { success: true };
+      }
+
       const path = this.extractPathFromUrl(imageUrl);
       if (path) {
+        console.log(`🔍 Path extraído: ${path}`);
         return await this.deleteImage(path);
       }
       
+      console.log('⚠️ No se pudo extraer path de la URL');
       return { success: true };
     } catch (error) {
       console.error('❌ Error eliminando imagen por URL:', error);
@@ -167,13 +183,22 @@ export const storageService = {
 
   extractPathFromUrl(url) {
     try {
-      // Para URLs de Firebase Storage
+      if (!url || typeof url !== 'string') {
+        console.warn('⚠️ URL no es un string válido:', url);
+        return null;
+      }
+
       if (url.includes('firebasestorage.googleapis.com')) {
         const match = url.match(/o\/(.+?)\?/);
-        return match ? decodeURIComponent(match[1]) : null;
+        if (match) {
+          const decodedPath = decodeURIComponent(match[1]);
+          console.log(`🔍 Path decodificado: ${decodedPath}`);
+          return decodedPath;
+        }
       }
       return null;
     } catch (error) {
+      console.error('❌ Error extrayendo path:', error);
       return null;
     }
   },
@@ -201,7 +226,6 @@ export const storageService = {
       const img = new Image();
       
       img.onload = () => {
-        // Calcular nuevas dimensiones manteniendo proporción
         let { width, height } = img;
         
         if (width > height) {
@@ -219,10 +243,8 @@ export const storageService = {
         canvas.width = width;
         canvas.height = height;
         
-        // Dibujar imagen redimensionada
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convertir a blob
         canvas.toBlob(resolve, blob.type, quality);
       };
       

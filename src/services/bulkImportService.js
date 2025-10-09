@@ -1,4 +1,4 @@
-// src/services/bulkImportService.js
+// src/services/bulkImportService.js - CORREGIDO
 import * as XLSX from 'xlsx';
 import { productService } from './productService';
 import { storageService } from './storageService';
@@ -16,7 +16,8 @@ export const bulkImportService = {
         errors: [],
         total: 0,
         imagesProcessed: 0,
-        imagesUploaded: 0
+        imagesUploaded: 0,
+        skipped: 0
       };
       
       // 1. Extraer productos y sus imágenes asociadas
@@ -33,7 +34,6 @@ export const bulkImportService = {
         }
       } catch (error) {
         console.warn('⚠️ No se pudieron extraer imágenes, continuando sin ellas:', error);
-        // Continuar sin imágenes
         const workbook = XLSX.read(await file.arrayBuffer());
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
@@ -50,26 +50,40 @@ export const bulkImportService = {
       console.log(`✅ ${results.total} productos encontrados en Excel`);
       
       // 2. Procesar productos en lotes
-      const batchSize = hasImages ? 5 : 10; // Lotes más pequeños si hay imágenes
+      const batchSize = hasImages ? 3 : 5;
+      const processedSkus = new Set();
       
       for (let i = 0; i < productsWithImages.length; i += batchSize) {
         const batch = productsWithImages.slice(i, i + batchSize);
         console.log(`📦 Procesando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(productsWithImages.length / batchSize)}`);
         
-        await Promise.all(batch.map(async (item, batchIndex) => {
+        for (let batchIndex = 0; batchIndex < batch.length; batchIndex++) {
+          const item = batch[batchIndex];
           const globalIndex = i + batchIndex;
+          
           try {
-            // Convertir datos de Excel al formato Firebase
+            // ✅ CORRECCIÓN: mapExcelRowToProduct ahora NO incluye campo 'id'
             const product = this.mapExcelRowToProduct(item.productData, globalIndex + 1, options);
             
             if (!product) {
               results.failed++;
-              results.errors.push(`Producto ${globalIndex + 1}: Datos inválidos`);
-              return;
+              results.skipped++;
+              results.errors.push(`Producto ${globalIndex + 1}: Datos inválidos o incompletos`);
+              continue;
             }
+            
+            // Verificar duplicados por SKU
+            if (processedSkus.has(product.sku)) {
+              console.warn(`⚠️ SKU duplicado omitido: ${product.sku}`);
+              results.skipped++;
+              continue;
+            }
+            processedSkus.add(product.sku);
             
             // Subir imagen si existe
             let imageUrl = '/api/placeholder/300/300';
+            let hasRealImage = false;
+            
             if (item.imageBlob) {
               console.log(`📤 Subiendo imagen para producto ${globalIndex + 1}: ${product.name}`);
               results.imagesProcessed++;
@@ -82,26 +96,28 @@ export const bulkImportService = {
               
               if (imageResult.success) {
                 imageUrl = imageResult.url;
-                product.hasRealImage = true;
+                hasRealImage = true;
                 results.imagesUploaded++;
                 console.log(`✅ Imagen subida: ${product.name}`);
               } else {
                 console.warn(`⚠️ Error subiendo imagen para ${product.name}:`, imageResult.error);
-                product.hasRealImage = false;
               }
             }
             
             // Asignar URL de imagen al producto
             product.imageUrl = imageUrl;
+            product.hasRealImage = hasRealImage;
             
-            // Crear producto en Firebase
+            // ✅ CORRECCIÓN: Crear producto SIN campo 'id'
+            // Firebase generará el ID automáticamente
             const result = await productService.addProduct(product);
+            
             if (result.success) {
               results.successful++;
-              console.log(`✅ Producto ${globalIndex + 1}: ${product.name} - Creado exitosamente`);
+              console.log(`✅ Producto ${globalIndex + 1}: ${product.name} - Creado exitosamente (ID: ${result.id})`);
             } else {
               results.failed++;
-              results.errors.push(`Producto ${globalIndex + 1}: ${result.error}`);
+              results.errors.push(`Producto ${globalIndex + 1} (${product.sku}): ${result.error}`);
               console.error(`❌ Error creando producto ${globalIndex + 1}:`, result.error);
             }
           } catch (error) {
@@ -109,15 +125,17 @@ export const bulkImportService = {
             results.errors.push(`Producto ${globalIndex + 1}: ${error.message}`);
             console.error(`❌ Error procesando producto ${globalIndex + 1}:`, error);
           }
-        }));
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
         
-        // Pausa entre lotes para no sobrecargar Firebase
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
       console.log(`🎉 Importación completada:`);
       console.log(`   ✅ ${results.successful} productos exitosos`);
       console.log(`   ❌ ${results.failed} productos con errores`);
+      console.log(`   ⏭️ ${results.skipped} productos omitidos`);
       console.log(`   📸 ${results.imagesUploaded}/${results.imagesProcessed} imágenes subidas`);
       
       return {
@@ -134,100 +152,77 @@ export const bulkImportService = {
     }
   },
 
-  // Mapear fila de Excel al formato de producto Firebase (PRECIOS CORREGIDOS)
+  // ✅ CORRECCIÓN: mapExcelRowToProduct NO incluye campo 'id'
   mapExcelRowToProduct(row, index, options = {}) {
     try {
-      // Extraer y limpiar datos del Excel
       const sku = row['SKU SHOW']?.toString().trim();
       const description = row['Description']?.toString().trim();
       const stock = parseInt(row['Cantidad']) || 0;
       
-      // MAPEO DE PRECIOS CORREGIDO:
-      // Precio Anaquel = PRECIO MÁS ALTO (original price)
-      // Precio Medio Mayoreo = PRECIO MIEMBROS (precio de venta por defecto)  
-      // Precio Mayoreo = PRECIO MÁS BAJO (mayoristas)
-      const precioAnaquel = parseFloat(row['Precio Anaquel ']) || 0; // PRECIO ORIGINAL/MÁS ALTO
-      const precioMedioMayoreo = parseFloat(row['Precio Medio Mayoreo ']) || 0; // PRECIO DEFAULT
-      const precioMayoreo = parseFloat(row['Precio Mayoreo ']) || 0; // PRECIO MAYORISTA
+      const precioAnaquel = parseFloat(row['Precio Anaquel ']) || 0;
+      const precioMedioMayoreo = parseFloat(row['Precio Medio Mayoreo ']) || 0;
+      const precioMayoreo = parseFloat(row['Precio Mayoreo ']) || 0;
       
-      // Validaciones básicas
       if (!sku || !description || precioAnaquel <= 0 || precioMedioMayoreo <= 0) {
         console.warn(`⚠️ Producto ${index} omitido por datos incompletos`);
         return null;
       }
       
-      // Parsear descripción para extraer información
       const productInfo = this.parseDescription(description);
-      
-      // Determinar categoría basada en el tipo
       const category = this.determineCategory(productInfo.type, sku);
-      
-      // Generar nombre del producto
       const name = this.generateProductName(productInfo, sku);
       
-      // Calcular descuentos CORRECTOS:
-      // Descuento miembro = diferencia entre precio anaquel y medio mayoreo
       const discountMiembro = precioAnaquel > precioMedioMayoreo
         ? Math.round(((precioAnaquel - precioMedioMayoreo) / precioAnaquel) * 100)
         : 0;
       
-      // Descuento mayorista = diferencia entre precio anaquel y mayoreo
       const discountMayorista = precioAnaquel > precioMayoreo
         ? Math.round(((precioAnaquel - precioMayoreo) / precioAnaquel) * 100)
         : 0;
       
-      // Crear objeto producto para Firebase
+      // ✅ CORRECCIÓN: NO incluir campo 'id'
+      // Firebase lo generará automáticamente al crear el documento
       const product = {
-        // Información básica
         name: name,
         sku: sku,
         description: this.generateDescription(productInfo, sku),
         category: category,
         
-        // SISTEMA DE PRECIOS CORREGIDO:
         pricing: {
-          public: Math.round(precioAnaquel), // Precio Anaquel - Público general (MÁS ALTO)
-          member: Math.round(precioMedioMayoreo), // Precio Medio Mayoreo - Socios 
-          wholesale: Math.round(precioMayoreo) // Precio Mayoreo - Mayoristas (MÁS BAJO)
+          public: Math.round(precioAnaquel),
+          member: Math.round(precioMedioMayoreo),
+          wholesale: Math.round(precioMayoreo)
         },
         
-        // Precios principales para compatibilidad con la UI actual
-        originalPrice: Math.round(precioAnaquel), // PRECIO ORIGINAL = ANAQUEL (el más alto)
-        price: Math.round(precioMedioMayoreo), // PRECIO DEFAULT = MEDIO MAYOREO
-        wholesalePrice: Math.round(precioMayoreo), // PRECIO MAYORISTA = MAYOREO (el más bajo)
+        originalPrice: Math.round(precioAnaquel),
+        price: Math.round(precioMedioMayoreo),
+        wholesalePrice: Math.round(precioMayoreo),
         
-        // Descuentos calculados correctamente
-        memberDiscount: discountMiembro, // Descuento para miembros vs precio anaquel
-        wholesaleDiscount: discountMayorista, // Descuento mayorista vs precio anaquel
-        discount: discountMiembro, // Descuento principal (miembros)
+        memberDiscount: discountMiembro,
+        wholesaleDiscount: discountMayorista,
+        discount: discountMiembro,
         
-        // Inventario
         stock: stock,
         
-        // Imagen (se asignará después)
         imageUrl: '/api/placeholder/300/300',
         hasRealImage: false,
         
-        // Metadatos
         material: productInfo.material || 'Acero Inoxidable',
         color: productInfo.color || 'Dorado',
         size: productInfo.size || 'Único',
         
-        // Estado
         featured: options.markAsFeatured ? (index <= 10) : false,
         rating: 4.5,
         
-        // Datos Excel originales (para referencia)
         excel: {
           itemNo: row['Item No.'],
           skuInt: row['SKU INT'],
           skuProv: row['SKU PROV'],
           lote: row['Lote'],
           originalDescription: description,
-          // PRECIOS ORIGINALES PARA REFERENCIA:
-          precioAnaquel: precioAnaquel, // EL MÁS ALTO
-          precioMedioMayoreo: precioMedioMayoreo, // MEDIO
-          precioMayoreo: precioMayoreo // EL MÁS BAJO
+          precioAnaquel: precioAnaquel,
+          precioMedioMayoreo: precioMedioMayoreo,
+          precioMayoreo: precioMayoreo
         }
       };
       
@@ -239,7 +234,6 @@ export const bulkImportService = {
     }
   },
 
-  // Parsear descripción del Excel para extraer información estructurada
   parseDescription(description) {
     const info = {
       material: '',
@@ -273,7 +267,6 @@ export const bulkImportService = {
     return info;
   },
 
-  // Determinar categoría basada en tipo y SKU
   determineCategory(type, sku) {
     const typeUpper = type?.toUpperCase() || '';
     const skuUpper = sku?.toUpperCase() || '';
@@ -289,20 +282,17 @@ export const bulkImportService = {
     } else if (typeUpper.includes('CHAIN') || skuUpper.startsWith('PU')) {
       return 'Pulseras';
     } else {
-      return 'Brazaletes'; // Default
+      return 'Brazaletes';
     }
   },
 
-  // Generar nombre comercial del producto
   generateProductName(productInfo, sku) {
     const parts = [];
     
-    // Tipo de producto
     if (productInfo.type) {
       const typeSpanish = this.translateType(productInfo.type);
       parts.push(typeSpanish);
     } else {
-      // Inferir del SKU
       if (sku.startsWith('BR')) parts.push('Brazalete');
       else if (sku.startsWith('RI')) parts.push('Anillo');
       else if (sku.startsWith('CO')) parts.push('Collar');
@@ -310,7 +300,6 @@ export const bulkImportService = {
       else parts.push('Pulsera');
     }
     
-    // Material y color
     if (productInfo.material) {
       parts.push(productInfo.material);
     }
@@ -321,13 +310,11 @@ export const bulkImportService = {
       parts.push(productInfo.color);
     }
     
-    // SKU al final para unicidad
     parts.push(`(${sku})`);
     
     return parts.join(' ');
   },
 
-  // Traducir tipos de inglés a español
   translateType(type) {
     const translations = {
       'Bracelet': 'Brazalete',
@@ -341,7 +328,6 @@ export const bulkImportService = {
     return translations[type] || type;
   },
 
-  // Generar descripción comercial
   generateDescription(productInfo, sku) {
     const parts = [];
     
@@ -365,12 +351,10 @@ export const bulkImportService = {
     return parts.join(' ');
   },
 
-  // Previsualizar productos antes de importar (CON imágenes)
   async previewImport(file, maxPreview = 5) {
     try {
       console.log('👀 Generando vista previa con imágenes...');
       
-      // Intentar extraer con imágenes primero
       let productsWithImages = [];
       try {
         const imageResult = await imageExtractionService.extractImages(file);
@@ -381,7 +365,6 @@ export const bulkImportService = {
         console.warn('⚠️ Vista previa sin imágenes:', error);
       }
       
-      // Si no se pudieron extraer imágenes, usar método básico
       if (productsWithImages.length === 0) {
         const workbook = XLSX.read(await file.arrayBuffer());
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];

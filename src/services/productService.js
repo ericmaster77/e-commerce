@@ -3,7 +3,7 @@ import { db } from '../firebase/config';
 import { 
   collection, 
   addDoc, 
-  getDocs, 
+  getDocs,
   doc, 
   updateDoc, 
   deleteDoc,
@@ -154,14 +154,14 @@ export const productService = {
   // =================== FUNCIONES DE ADMINISTRACIÓN CON FIREBASE STORAGE ===================
 
   // Crear producto completo (con imagen) - SOLO ADMIN
-  async createProductAdmin(productData, imageFile) {
+   async createProductAdmin(productData, imageFile) {
     try {
       console.log('🔄 Creando producto con imagen...');
       
       // Primero crear el producto para obtener un ID
       const docRef = await addDoc(collection(db, 'products'), {
         ...productData,
-        imageUrl: '/api/placeholder/300/300', // Placeholder temporal
+        imageUrl: '/api/placeholder/300/300',
         hasRealImage: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -187,15 +187,27 @@ export const productService = {
             finalImageUrl = uploadResult.url;
             hasRealImage = true;
             console.log(`✅ Imagen subida exitosamente: ${finalImageUrl}`);
+            console.log(`📏 Tamaño de imagen: ${uploadResult.size} bytes`);
             
-            // Actualizar producto con la URL real de la imagen
-            await updateDoc(docRef, {
+            // ✅ SOLUCIÓN: Construir objeto solo con valores definidos
+            const updateData = {
               imageUrl: finalImageUrl,
               hasRealImage: true,
               imagePath: uploadResult.path,
-              imageSize: uploadResult.size,
               updatedAt: serverTimestamp()
-            });
+            };
+            
+            // Solo agregar imageSize si es un número válido
+            if (typeof uploadResult.size === 'number' && uploadResult.size >= 0) {
+              updateData.imageSize = uploadResult.size;
+              console.log(`✅ Agregando imageSize: ${uploadResult.size}`);
+            } else {
+              console.warn(`⚠️ imageSize no válido, se omitirá:`, uploadResult.size);
+            }
+            
+            // Actualizar producto con la URL real de la imagen
+            await updateDoc(docRef, updateData);
+            console.log(`✅ Producto actualizado con imagen`);
           } else {
             console.error(`❌ Error subiendo imagen: ${uploadResult.error}`);
           }
@@ -219,8 +231,13 @@ export const productService = {
     try {
       console.log(`🔄 Actualizando producto ${id}...`);
       
-      let finalImageUrl = oldImageUrl || '/api/placeholder/300/300';
-      let hasRealImage = !!(oldImageUrl && !oldImageUrl.includes('placeholder'));
+      // Validar que oldImageUrl sea un string
+      const oldImageUrlString = typeof oldImageUrl === 'string' ? oldImageUrl : '';
+      
+      let finalImageUrl = oldImageUrlString || '/api/placeholder/300/300';
+      let hasRealImage = !!(oldImageUrlString && 
+                           !oldImageUrlString.includes('placeholder') && 
+                           !oldImageUrlString.includes('/api/'));
 
       // Si hay nueva imagen
       if (newImageFile) {
@@ -236,22 +253,28 @@ export const productService = {
           
           if (uploadResult.success) {
             // Eliminar imagen anterior si existe y no es placeholder
-            if (oldImageUrl && !oldImageUrl.includes('placeholder')) {
-              console.log('🗑️ Eliminando imagen anterior...');
-              await storageService.deleteImageByUrl(oldImageUrl);
+            if (oldImageUrlString && 
+                !oldImageUrlString.includes('placeholder') && 
+                !oldImageUrlString.includes('/api/')) {
+              console.log(`🗑️ Eliminando imagen anterior: ${oldImageUrlString}`);
+              await storageService.deleteImageByUrl(oldImageUrlString);
             }
             
             finalImageUrl = uploadResult.url;
             hasRealImage = true;
             
-            // Agregar información de imagen a las actualizaciones
+            // ✅ SOLUCIÓN: Solo agregar si son valores válidos
             updates.imagePath = uploadResult.path;
-            updates.imageSize = uploadResult.size;
+            if (typeof uploadResult.size === 'number' && uploadResult.size >= 0) {
+              updates.imageSize = uploadResult.size;
+              console.log(`✅ Agregando imageSize: ${uploadResult.size}`);
+            } else {
+              console.warn(`⚠️ imageSize no válido, se omitirá:`, uploadResult.size);
+            }
             
             console.log(`✅ Nueva imagen subida: ${finalImageUrl}`);
           } else {
             console.error(`❌ Error subiendo nueva imagen: ${uploadResult.error}`);
-            // Mantener imagen anterior en caso de error
           }
         }
       }
@@ -265,6 +288,8 @@ export const productService = {
         updatedAt: serverTimestamp()
       });
 
+      console.log(`✅ Producto ${id} actualizado exitosamente`);
+
       return { 
         success: true, 
         imageUrl: finalImageUrl,
@@ -276,33 +301,52 @@ export const productService = {
     }
   },
 
+
   // Eliminar producto completo (con imagen) - SOLO ADMIN
-  async deleteProductAdmin(id, imageUrl) {
+async deleteProductAdmin(id, imageUrl) {
     try {
       console.log(`🗑️ Eliminando producto ${id}...`);
+      console.log(`📸 ImageUrl recibida:`, imageUrl);
+      
+      // Validar que imageUrl sea un string antes de procesarlo
+      const imageUrlString = typeof imageUrl === 'string' ? imageUrl : '';
+      console.log(`📸 ImageUrl procesada:`, imageUrlString);
       
       // Eliminar imagen si existe y no es placeholder
-      if (imageUrl && !imageUrl.includes('placeholder')) {
-        console.log('🗑️ Eliminando imagen asociada...');
-        const deleteResult = await storageService.deleteImageByUrl(imageUrl);
+      if (imageUrlString && 
+          !imageUrlString.includes('placeholder') && 
+          !imageUrlString.includes('/api/')) {
+        console.log(`🗑️ Intentando eliminar imagen: ${imageUrlString}`);
+        const deleteResult = await storageService.deleteImageByUrl(imageUrlString);
         if (!deleteResult.success) {
           console.warn(`⚠️ No se pudo eliminar imagen: ${deleteResult.error}`);
         } else {
-          console.log('✅ Imagen eliminada correctamente');
+          console.log('✅ Imagen eliminada correctamente de Storage');
         }
+      } else {
+        console.log('⚠️ No hay imagen para eliminar o es placeholder');
       }
 
       // Eliminar producto de Firestore
+      console.log(`🗑️ Eliminando documento de Firestore: products/${id}`);
       await deleteDoc(doc(db, 'products', id));
       
-      console.log(`✅ Producto ${id} eliminado completamente`);
-      return { success: true };
+      console.log(`✅ Producto ${id} eliminado completamente de Firestore`);
+      
+      return { 
+        success: true, 
+        deletedId: id,
+        message: 'Producto eliminado exitosamente' 
+      };
     } catch (error) {
-      console.error('Error al eliminar producto (admin):', error);
-      return { success: false, error: error.message };
+      console.error('❌ Error al eliminar producto (admin):', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
     }
   },
-
+  
   // Obtener estadísticas de productos (solo admin)
   async getProductStats() {
     try {
