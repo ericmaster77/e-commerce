@@ -1,5 +1,5 @@
-// src/components/SiteConfigPanel.js
-import React, { useState } from 'react';
+// src/components/SiteConfigPanel.js - VERSIÓN CORREGIDA
+import React, { useState, useEffect } from 'react';
 import { Save, Upload, Eye, EyeOff, AlertCircle, Facebook, Instagram, MessageCircle, Mail, Phone, MapPin, RefreshCw } from 'lucide-react';
 import { useSiteConfig } from '../hooks/useSiteConfig';
 
@@ -29,10 +29,19 @@ const SiteConfigPanel = () => {
   const [bannerImage, setBannerImage] = useState(null);
   const [bannerPreview, setBannerPreview] = useState('');
 
+  // Banners por defecto si no existen
+  const defaultBanners = [
+    { id: 1, imageUrl: '', title: 'Banner 1', link: '', active: true, order: 1 },
+    { id: 2, imageUrl: '', title: 'Banner 2', link: '', active: true, order: 2 },
+    { id: 3, imageUrl: '', title: 'Banner 3', link: '', active: true, order: 3 }
+  ];
+
   // Cargar datos cuando la configuración esté lista
-  React.useEffect(() => {
-    if (config && config.socialMedia) {
-      setSocialData(config.socialMedia);
+  useEffect(() => {
+    if (config) {
+      if (config.socialMedia) {
+        setSocialData(config.socialMedia);
+      }
     }
   }, [config]);
 
@@ -156,6 +165,9 @@ const SiteConfigPanel = () => {
     );
   }
 
+  // Usar banners de la config o los por defecto
+  const banners = config?.banners || defaultBanners;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Notification */}
@@ -219,7 +231,7 @@ const SiteConfigPanel = () => {
 
           {/* Banners Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {config?.banners?.map((banner) => (
+            {banners.map((banner) => (
               <div key={banner.id} className="bg-white border rounded-lg overflow-hidden shadow-sm">
                 {/* Banner Image */}
                 <div className="relative h-40 bg-gradient-to-br from-rosa-light to-rosa-primary">
@@ -231,7 +243,10 @@ const SiteConfigPanel = () => {
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Upload className="w-12 h-12 text-rosa-secondary" />
+                      <div className="text-center">
+                        <Upload className="w-12 h-12 text-rosa-secondary mx-auto mb-2" />
+                        <p className="text-rosa-dark text-sm">Sin imagen</p>
+                      </div>
                     </div>
                   )}
                   
@@ -271,4 +286,235 @@ const SiteConfigPanel = () => {
                       }`}
                       title={banner.active ? 'Desactivar' : 'Activar'}
                     >
-                      {banner.active ? <EyeOff className="w-4 h-4"
+                      {banner.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Editor de Banner (Modal) */}
+          {selectedBanner && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <h3 className="text-xl font-bold mb-4">Editar {selectedBanner.title}</h3>
+                
+                <form onSubmit={handleSaveBanner} className="space-y-4">
+                  {/* Vista previa actual */}
+                  {bannerPreview && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Vista Previa</label>
+                      <img 
+                        src={bannerPreview} 
+                        alt="Preview" 
+                        className="w-full h-40 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
+
+                  {/* Subir nueva imagen */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nueva Imagen {!bannerPreview && '(Requerida)'}
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerImageChange}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                      disabled={isSaving}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tamaño recomendado: 1920x600px • Máximo 2MB
+                    </p>
+                  </div>
+
+                  {/* Título */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Título</label>
+                    <input
+                      type="text"
+                      value={bannerForm.title}
+                      onChange={(e) => setBannerForm({...bannerForm, title: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-lg"
+                      required
+                      disabled={isSaving}
+                    />
+                  </div>
+
+                  {/* Link */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Link (opcional)
+                    </label>
+                    <input
+                      type="url"
+                      value={bannerForm.link}
+                      onChange={(e) => setBannerForm({...bannerForm, link: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-lg"
+                      placeholder="https://..."
+                      disabled={isSaving}
+                    />
+                  </div>
+
+                  {/* Activo */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={bannerForm.active}
+                      onChange={(e) => setBannerForm({...bannerForm, active: e.target.checked})}
+                      className="w-4 h-4 text-rosa-secondary border-gray-300 rounded"
+                      disabled={isSaving}
+                    />
+                    <label className="ml-2 text-sm text-gray-700">Banner activo</label>
+                  </div>
+
+                  {/* Botones */}
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="flex-1 bg-rosa-secondary text-white py-2 rounded-lg hover:bg-rosa-dark transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? 'Guardando...' : 'Guardar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedBanner(null);
+                        setBannerForm({ title: '', link: '', active: true });
+                        setBannerPreview('');
+                        setBannerImage(null);
+                      }}
+                      disabled={isSaving}
+                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Redes Sociales */}
+      {activeTab === 'social' && (
+        <div>
+          <form onSubmit={handleSaveSocial} className="space-y-6">
+            {/* Facebook */}
+            <div>
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <Facebook className="w-5 h-5 mr-2 text-blue-600" />
+                Facebook
+              </label>
+              <input
+                type="url"
+                name="facebook"
+                value={socialData.facebook}
+                onChange={handleSocialChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-secondary"
+                placeholder="https://facebook.com/rosaolivajoyeria"
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Instagram */}
+            <div>
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <Instagram className="w-5 h-5 mr-2 text-pink-600" />
+                Instagram
+              </label>
+              <input
+                type="url"
+                name="instagram"
+                value={socialData.instagram}
+                onChange={handleSocialChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-secondary"
+                placeholder="https://instagram.com/rosaolivajoyeria"
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <MessageCircle className="w-5 h-5 mr-2 text-green-600" />
+                WhatsApp
+              </label>
+              <input
+                type="tel"
+                name="whatsapp"
+                value={socialData.whatsapp}
+                onChange={handleSocialChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-secondary"
+                placeholder="+52 951 123 4567"
+                disabled={isSaving}
+              />
+              <p className="text-xs text-gray-500 mt-1">Incluye código de país (ej: +52)</p>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <Mail className="w-5 h-5 mr-2 text-gray-600" />
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={socialData.email}
+                onChange={handleSocialChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-secondary"
+                placeholder="info@rosaolivajoyeria.com"
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Teléfono */}
+            <div>
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <Phone className="w-5 h-5 mr-2 text-gray-600" />
+                Teléfono
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={socialData.phone}
+                onChange={handleSocialChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-secondary"
+                placeholder="+52 951 XXX XXXX"
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Botón guardar */}
+            <div className="flex justify-end pt-4">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="bg-rosa-secondary text-white px-6 py-3 rounded-lg hover:bg-rosa-dark transition-colors disabled:opacity-50 flex items-center"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Guardar Cambios
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SiteConfigPanel;

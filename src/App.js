@@ -1,11 +1,15 @@
+// src/App.js - ARCHIVO COMPLETO ACTUALIZADO
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { ShoppingCart, User, Search, Menu, X, Plus, Minus, Star, Filter, MapPin, Phone, Mail } from 'lucide-react';
 import AdminPanel from './components/AdminPanel';
+import BannerCarousel from './components/BannerCarousel';
+import SiteConfigPanel from './components/SiteConfigPanel';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useProducts, useFeaturedProducts, useDataInitialization } from './hooks/useFirestore';
 import { usePricing } from './hooks/usePricing';
+import { useSiteConfig } from './hooks/useSiteConfig';
 
-// Context para el carrito de compras (mantiene la misma lógica)
+// Context para el carrito de compras
 const CartContext = createContext();
 
 const useCart = () => {
@@ -79,7 +83,7 @@ const CartProvider = ({ children }) => {
   );
 };
 
-// Componente Header actualizado para usar Firebase Auth
+// Componente Header actualizado con nuevo diseño y logo
 const Header = ({ currentView, setCurrentView }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -95,68 +99,104 @@ const Header = ({ currentView, setCurrentView }) => {
 
   return (
     <>
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      <header className="bg-gradient-to-r from-[#90983d] to-[#7a8131] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-16 md:h-20">
             {/* Logo */}
-            <div className="flex items-center cursor-pointer" onClick={() => setCurrentView('home')}>
-              <div className="text-2xl font-bold text-amber-700">Rosa Oliva</div>
-              <div className="text-sm text-gray-600 ml-2">Joyería</div>
+            <div 
+              className="flex items-center cursor-pointer space-x-2 md:space-x-3" 
+              onClick={() => setCurrentView('home')}
+            >
+              <img 
+                src="/logo-rosa-oliva.png" 
+                alt="Rosa Oliva Logo" 
+                className="w-10 h-10 md:w-12 md:h-12 object-contain"
+              />
+              <div>
+                <div className="text-lg md:text-2xl font-bold text-rosa-dark">Rosa Oliva</div>
+                <div className="text-xs md:text-sm text-rosa-dark -mt-1">Joyería</div>
+              </div>
             </div>
 
             {/* Navigation Desktop */}
-            <nav className="hidden md:flex space-x-8">
+            <nav className="hidden md:flex space-x-4 lg:space-x-8">
               <button 
                 onClick={() => setCurrentView('home')}
-                className={`text-gray-700 hover:text-amber-700 ${currentView === 'home' ? 'text-amber-700 font-semibold' : ''}`}
+                className={`text-sm lg:text-base font-medium transition-colors ${
+                  currentView === 'home' 
+                    ? 'text-rosa-primary font-semibold' 
+                    : 'text-gray-700 hover:text-rosa-primary'
+                }`}
               >
                 Inicio
               </button>
               <button 
                 onClick={() => setCurrentView('products')}
-                className={`text-gray-700 hover:text-amber-700 ${currentView === 'products' ? 'text-amber-700 font-semibold' : ''}`}
+                className={`text-sm lg:text-base font-medium transition-colors ${
+                  currentView === 'products' 
+                    ? 'text-rosa-primary font-semibold' 
+                    : 'text-gray-700 hover:text-rosa-primary'
+                }`}
               >
                 Productos
               </button>
               {user && isAdmin() && (
-                <button 
-                  onClick={() => setCurrentView('admin')}
-                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                >
-                  Admin
-                </button>
+                <>
+                  <button 
+                    onClick={() => setCurrentView('admin')}
+                    className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                  >
+                    Admin
+                  </button>
+                  <button 
+                    onClick={() => setCurrentView('siteConfig')}
+                    className="bg-rosa-secondary text-white px-3 py-1 rounded text-sm hover:bg-rosa-dark transition-colors"
+                  >
+                    Configuración
+                  </button>
+                </>
               )}
               <button 
                 onClick={() => setCurrentView('membership')}
-                className={`text-gray-700 hover:text-amber-700 ${currentView === 'membership' ? 'text-amber-700 font-semibold' : ''}`}
+                className={`text-sm lg:text-base font-medium transition-colors ${
+                  currentView === 'membership' 
+                    ? 'text-rosa-primary font-semibold' 
+                    : 'text-gray-700 hover:text-rosa-primary'
+                }`}
               >
                 Membresía
               </button>
               <button 
                 onClick={() => setCurrentView('about')}
-                className={`text-gray-700 hover:text-amber-700 ${currentView === 'about' ? 'text-amber-700 font-semibold' : ''}`}
+                className={`text-sm lg:text-base font-medium transition-colors ${
+                  currentView === 'about' 
+                    ? 'text-rosa-primary font-semibold' 
+                    : 'text-gray-700 hover:text-rosa-primary'
+                }`}
               >
                 Nosotros
               </button>
             </nav>
 
             {/* Right side icons */}
-            <div className="flex items-center space-x-4">
-              <button className="p-2 hover:bg-gray-100 rounded-full">
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <button className="p-2 hover:bg-rosa-light rounded-full transition-colors hidden sm:block">
                 <Search className="w-5 h-5 text-gray-700" />
               </button>
               
               {user ? (
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-700">Hola, {user.displayName}</span>
+                  <span className="text-xs md:text-sm text-gray-700 hidden lg:block">
+                    Hola, {user.displayName}
+                  </span>
                   {!user.emailVerified && (
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded hidden lg:block">
                       Verificar email
                     </span>
                   )}
                   <button 
                     onClick={handleLogout}
-                    className="text-sm text-red-600 hover:text-red-700"
+                    className="text-xs md:text-sm text-red-600 hover:text-red-700 font-medium"
                   >
                     Salir
                   </button>
@@ -164,7 +204,7 @@ const Header = ({ currentView, setCurrentView }) => {
               ) : (
                 <button 
                   onClick={() => setIsLoginModalOpen(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 hover:bg-rosa-light rounded-full transition-colors"
                 >
                   <User className="w-5 h-5 text-gray-700" />
                 </button>
@@ -172,11 +212,11 @@ const Header = ({ currentView, setCurrentView }) => {
 
               <button 
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2 hover:bg-gray-100 rounded-full"
+                className="relative p-2 hover:bg-rosa-light rounded-full transition-colors"
               >
                 <ShoppingCart className="w-5 h-5 text-gray-700" />
                 {getTotalItems() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-rosa-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
                     {getTotalItems()}
                   </span>
                 )}
@@ -184,42 +224,56 @@ const Header = ({ currentView, setCurrentView }) => {
 
               <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 hover:bg-gray-100 rounded-full"
+                className="md:hidden p-2 hover:bg-rosa-light rounded-full transition-colors"
               >
-                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
           </div>
 
           {/* Mobile menu */}
           {isMenuOpen && (
-            <div className="md:hidden border-t border-gray-200 py-4">
-              <nav className="flex flex-col space-y-2">
-                <button 
-                  onClick={() => {setCurrentView('home'); setIsMenuOpen(false);}}
-                  className="text-left py-2 px-4 text-gray-700 hover:text-amber-700 hover:bg-gray-50 rounded"
-                >
-                  Inicio
-                </button>
-                <button 
-                  onClick={() => {setCurrentView('products'); setIsMenuOpen(false);}}
-                  className="text-left py-2 px-4 text-gray-700 hover:text-amber-700 hover:bg-gray-50 rounded"
-                >
-                  Productos
-                </button>
-                <button 
-                  onClick={() => {setCurrentView('membership'); setIsMenuOpen(false);}}
-                  className="text-left py-2 px-4 text-gray-700 hover:text-amber-700 hover:bg-gray-50 rounded"
-                >
-                  Membresía
-                </button>
-                <button 
-                  onClick={() => {setCurrentView('about'); setIsMenuOpen(false);}}
-                  className="text-left py-2 px-4 text-gray-700 hover:text-amber-700 hover:bg-gray-50 rounded"
-                >
-                  Nosotros
-                </button>
-              </nav>
+            <div className="md:hidden border-t border-gray-200 py-4 space-y-1">
+              <button 
+                onClick={() => {setCurrentView('home'); setIsMenuOpen(false);}}
+                className="block w-full text-left py-3 px-4 text-gray-700 hover:text-rosa-primary hover:bg-rosa-light rounded transition-colors"
+              >
+                Inicio
+              </button>
+              <button 
+                onClick={() => {setCurrentView('products'); setIsMenuOpen(false);}}
+                className="block w-full text-left py-3 px-4 text-gray-700 hover:text-rosa-primary hover:bg-rosa-light rounded transition-colors"
+              >
+                Productos
+              </button>
+              {user && isAdmin() && (
+                <>
+                  <button 
+                    onClick={() => {setCurrentView('admin'); setIsMenuOpen(false);}}
+                    className="block w-full text-left py-3 px-4 bg-red-600 text-white hover:bg-red-700 rounded transition-colors"
+                  >
+                    Admin
+                  </button>
+                  <button 
+                    onClick={() => {setCurrentView('siteConfig'); setIsMenuOpen(false);}}
+                    className="block w-full text-left py-3 px-4 bg-rosa-secondary text-white hover:bg-rosa-dark rounded transition-colors"
+                  >
+                    Configuración
+                  </button>
+                </>
+              )}
+              <button 
+                onClick={() => {setCurrentView('membership'); setIsMenuOpen(false);}}
+                className="block w-full text-left py-3 px-4 text-gray-700 hover:text-rosa-primary hover:bg-rosa-light rounded transition-colors"
+              >
+                Membresía
+              </button>
+              <button 
+                onClick={() => {setCurrentView('about'); setIsMenuOpen(false);}}
+                className="block w-full text-left py-3 px-4 text-gray-700 hover:text-rosa-primary hover:bg-rosa-light rounded transition-colors"
+              >
+                Nosotros
+              </button>
             </div>
           )}
         </div>
@@ -233,7 +287,7 @@ const Header = ({ currentView, setCurrentView }) => {
   );
 };
 
-// Componente ProductCard actualizado
+// Componente ProductCard actualizado con mejor responsividad
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
@@ -259,22 +313,19 @@ const ProductCard = ({ product }) => {
     setImageError(true);
   };
 
-  // Determinar qué imagen mostrar
   const getImageToShow = () => {
-    // Si hay imagen real y no ha fallado
     if (product.hasRealImage && product.imageUrl && !product.imageUrl.includes('placeholder') && !imageError) {
       return product.imageUrl;
     }
-    // Fallback a placeholder
     return null;
   };
 
   const imageToShow = getImageToShow();
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300">
       {product.featured && (
-        <div className="bg-amber-600 text-white text-xs px-2 py-1 absolute z-10 m-2 rounded">
+        <div className="bg-rosa-primary text-white text-xs px-2 py-1 absolute z-10 m-2 rounded">
           Destacado
         </div>
       )}
@@ -284,14 +335,14 @@ const ProductCard = ({ product }) => {
         </div>
       )}
       
-      <div className="relative h-48 bg-gray-200">
+      <div className="relative h-48 sm:h-56 md:h-64 bg-gray-200">
         {imageToShow ? (
           <div className="relative w-full h-full">
             {imageLoading && (
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-br from-rosa-light to-rosa-primary flex items-center justify-center">
                 <div className="animate-pulse">
-                  <div className="text-amber-700 text-4xl">📸</div>
-                  <div className="text-xs text-amber-600 mt-2">Cargando...</div>
+                  <div className="text-rosa-dark text-4xl">📸</div>
+                  <div className="text-xs text-rosa-secondary mt-2">Cargando...</div>
                 </div>
               </div>
             )}
@@ -311,102 +362,97 @@ const ProductCard = ({ product }) => {
             )}
           </div>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-rosa-light to-rosa-primary flex items-center justify-center">
             <div className="text-center">
-              <div className="text-amber-700 text-6xl mb-2">✨</div>
-              <div className="text-amber-700 text-xs">Rosa Oliva</div>
+              <div className="text-rosa-dark text-5xl md:text-6xl mb-2">✨</div>
+              <div className="text-rosa-dark text-xs font-medium">Rosa Oliva</div>
             </div>
           </div>
         )}
       </div>
       
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 mb-2">{product.name}</h3>
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+      <div className="p-3 md:p-4">
+        <h3 className="font-semibold text-gray-900 mb-2 text-sm md:text-base line-clamp-2">
+          {product.name}
+        </h3>
+        <p className="text-xs md:text-sm text-gray-600 mb-3 line-clamp-2">
+          {product.description}
+        </p>
         
         <div className="flex items-center mb-2">
           <div className="flex items-center">
             {[...Array(5)].map((_, i) => (
               <Star 
                 key={i} 
-                className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                className={`w-3 h-3 md:w-4 md:h-4 ${
+                  i < Math.floor(product.rating) 
+                    ? 'text-yellow-400 fill-current' 
+                    : 'text-gray-300'
+                }`} 
               />
             ))}
           </div>
-          <span className="text-sm text-gray-600 ml-2">({product.rating})</span>
+          <span className="text-xs md:text-sm text-gray-600 ml-2">({product.rating})</span>
         </div>
 
-        {/* Sistema de precios CORREGIDO - Anaquel como precio principal */}
         <div className="flex items-center justify-between mb-3">
-          <div>
-            {/* Precio principal (Anaquel = público) */}
+          <div className="flex-1">
             <div className="flex items-center space-x-2">
-              <span className="text-lg font-bold text-gray-900">
+              <span className="text-base md:text-lg font-bold text-gray-900">
                 ${(product.price || product.pricing?.public || 0).toLocaleString()}
               </span>
-              {/* Mostrar precio original solo si hay descuento real */}
               {product.originalPrice > 0 && product.originalPrice > product.price && (
-                <span className="text-sm text-gray-500 line-through">
+                <span className="text-xs md:text-sm text-gray-500 line-through">
                   ${product.originalPrice.toLocaleString()}
                 </span>
               )}
             </div>
             
-            {/* Indicador del tipo de precio actual */}
-            <div className="text-xs text-blue-600 font-medium">
+            <div className="text-xs text-rosa-secondary font-medium">
               {getPricingLevelText()}
             </div>
             
-            {/* Mostrar ahorros para usuarios no miembros */}
             {pricingInfo?.userLevel === 'public' && membershipBenefits?.memberSavings > 0 && (
               <div className="text-xs text-green-600">
                 Socios ahorran: ${membershipBenefits.memberSavings.toLocaleString()}
               </div>
             )}
-
-            {/* Mostrar los 3 precios para referencia (opcional) */}
-            {product.pricing && (
-              <div className="text-xs text-gray-500 mt-1 space-y-1">
-                <div>Público: ${product.pricing.public?.toLocaleString()}</div>
-                <div>Socios: ${product.pricing.member?.toLocaleString()}</div>
-                <div>Mayoreo: ${product.pricing.wholesale?.toLocaleString()}</div>
-              </div>
-            )}
           </div>
-          <span className="text-sm text-gray-600">{product.stock} disponibles</span>
+          <span className="text-xs md:text-sm text-gray-600 whitespace-nowrap ml-2">
+            {product.stock} disp.
+          </span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <button 
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+              className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-3 h-3 md:w-4 md:h-4" />
             </button>
-            <span className="w-8 text-center">{quantity}</span>
+            <span className="w-6 md:w-8 text-center text-sm md:text-base">{quantity}</span>
             <button 
               onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+              className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3 h-3 md:w-4 md:h-4" />
             </button>
           </div>
           
           <button 
             onClick={handleAddToCart}
             disabled={product.stock === 0}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
               product.stock === 0 
                 ? 'bg-gray-400 text-white cursor-not-allowed' 
-                : 'bg-amber-600 text-white hover:bg-amber-700'
+                : 'bg-rosa-primary text-white hover:bg-rosa-dark shadow-md hover:shadow-lg'
             }`}
           >
             {product.stock === 0 ? 'Agotado' : 'Agregar'}
           </button>
         </div>
 
-        {/* Información adicional del producto (SKU, etc.) */}
         {product.sku && (
           <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
             SKU: {product.sku}
@@ -418,7 +464,7 @@ const ProductCard = ({ product }) => {
   );
 };
 
-// Componente Home actualizado para usar datos de Firebase
+// Componente Home actualizado con BannerCarousel
 const Home = ({ setCurrentView }) => {
   const { featuredProducts, loading, error } = useFeaturedProducts();
   const { initializeData, initializing } = useDataInitialization();
@@ -427,7 +473,7 @@ const Home = ({ setCurrentView }) => {
     const result = await initializeData();
     if (result.success) {
       alert(result.message);
-      window.location.reload(); // Recargar para mostrar los nuevos productos
+      window.location.reload();
     } else {
       alert(`Error: ${result.error}`);
     }
@@ -453,7 +499,7 @@ const Home = ({ setCurrentView }) => {
           <div className="text-sm text-gray-600 mb-4">{error}</div>
           <button 
             onClick={() => window.location.reload()}
-            className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700"
+            className="bg-rosa-primary text-white px-4 py-2 rounded hover:bg-rosa-dark transition-colors"
           >
             Reintentar
           </button>
@@ -464,42 +510,49 @@ const Home = ({ setCurrentView }) => {
 
   return (
     <div>
+      {/* Banner Carousel */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+        <BannerCarousel />
+      </section>
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-amber-50 to-amber-100 py-16">
+      <section className="bg-gradient-to-br from-rosa-light to-white py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 md:mb-6">
               Rosa Oliva Joyería
             </h1>
-            <p className="text-xl text-gray-700 mb-8">
+            <p className="text-lg md:text-xl text-rosa-dark mb-6 md:mb-8">
               Un Legado que Impulsa Nuevos Comienzos
             </p>
-            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-base md:text-lg text-gray-600 mb-6 md:mb-8 max-w-2xl mx-auto px-4">
               Descubre la esencia de nuestra marca, inspirada en una filosofía de vida que transforma sueños en realidades.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center px-4">
               <button 
                 onClick={() => setCurrentView('products')}
-                className="bg-amber-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-amber-700 transition-colors"
+                className="bg-rosa-primary text-white px-6 md:px-8 py-3 rounded-lg text-base md:text-lg hover:bg-rosa-dark transition-colors shadow-lg"
               >
                 Ver Productos
               </button>
               <button 
                 onClick={() => setCurrentView('membership')}
-                className="border-2 border-amber-600 text-amber-700 px-8 py-3 rounded-lg text-lg hover:bg-amber-50 transition-colors"
+                className="border-2 border-rosa-primary text-rosa-dark px-6 md:px-8 py-3 rounded-lg text-base md:text-lg hover:bg-rosa-light transition-colors"
               >
                 Conocer Membresía
               </button>
             </div>
 
-            {/* Botón para inicializar datos (solo mostrar si no hay productos) */}
+            {/* Botón para inicializar datos */}
             {featuredProducts.length === 0 && (
-              <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-                <p className="text-blue-700 mb-4">¿Primera vez? Inicializa la base de datos con productos de ejemplo</p>
+              <div className="mt-8 p-4 bg-blue-50 rounded-lg max-w-md mx-auto">
+                <p className="text-blue-700 mb-4 text-sm md:text-base">
+                  ¿Primera vez? Inicializa la base de datos con productos de ejemplo
+                </p>
                 <button
                   onClick={handleInitializeData}
                   disabled={initializing}
-                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm md:text-base"
                 >
                   {initializing ? 'Inicializando...' : 'Agregar Productos de Ejemplo'}
                 </button>
@@ -510,25 +563,29 @@ const Home = ({ setCurrentView }) => {
       </section>
 
       {/* Featured Products */}
-      <section className="py-16">
+      <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Productos Destacados</h2>
-            <p className="text-lg text-gray-600">Nuestras piezas más populares y exclusivas</p>
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
+              Productos Destacados
+            </h2>
+            <p className="text-base md:text-lg text-gray-600">
+              Nuestras piezas más populares y exclusivas
+            </p>
           </div>
           
           {featuredProducts.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
                 {featuredProducts.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
               
-              <div className="text-center mt-12">
+              <div className="text-center mt-8 md:mt-12">
                 <button 
                   onClick={() => setCurrentView('products')}
-                  className="bg-amber-600 text-white px-8 py-3 rounded-lg hover:bg-amber-700 transition-colors"
+                  className="bg-rosa-primary text-white px-6 md:px-8 py-3 rounded-lg hover:bg-rosa-dark transition-colors text-sm md:text-base shadow-lg"
                 >
                   Ver Todos los Productos
                 </button>
@@ -537,42 +594,52 @@ const Home = ({ setCurrentView }) => {
           ) : (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">📦</div>
-              <p className="text-gray-500 text-lg">No hay productos destacados disponibles</p>
+              <p className="text-gray-500 text-base md:text-lg">
+                No hay productos destacados disponibles
+              </p>
             </div>
           )}
         </div>
       </section>
 
       {/* Mission Section */}
-      <section className="bg-gray-50 py-16">
+      <section className="bg-gray-50 py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Nuestra Misión</h2>
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
+              Nuestra Misión
+            </h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="text-white text-sm md:text-2xl">💡</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="text-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="text-white text-2xl md:text-3xl">💡</div>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Inspirar</h3>
-              <p className="text-gray-600 text-sm md:text-base">A personas a encontrar su propio camino, impulsadas por el legado de Rosa Oliva.</p>
+              <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">Inspirar</h3>
+              <p className="text-gray-600 text-sm md:text-base">
+                A personas a encontrar su propio camino, impulsadas por el legado de Rosa Oliva.
+              </p>
             </div>
             
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="text-white text-sm md:text-2xl">🤝</div>
+            <div className="text-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="text-white text-2xl md:text-3xl">🤝</div>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Acompañar</h3>
-              <p className="text-gray-600 text-sm md:text-base">Brindando herramientas y conocimientos para construir sus sueños desde cero.</p>
+              <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">Acompañar</h3>
+              <p className="text-gray-600 text-sm md:text-base">
+                Brindando herramientas y conocimientos para construir sus sueños desde cero.
+              </p>
             </div>
             
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="text-white text-sm md:text-2xl">🎯</div>
+            <div className="text-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="text-white text-2xl md:text-3xl">🎯</div>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Capacitar</h3>
-              <p className="text-gray-600 text-sm md:text-base">Para que alcancen la libertad y el éxito que merecen, en cualquier lugar del mundo.</p>
+              <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">Capacitar</h3>
+              <p className="text-gray-600 text-sm md:text-base">
+                Para que alcancen la libertad y el éxito que merecen, en cualquier lugar del mundo.
+              </p>
             </div>
           </div>
         </div>
@@ -581,7 +648,7 @@ const Home = ({ setCurrentView }) => {
   );
 };
 
-// Componente Products actualizado para usar Firebase
+// Componente Products
 const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [sortBy, setSortBy] = useState('featured');
@@ -594,7 +661,6 @@ const Products = () => {
     filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
   }
   
-  // Sorting
   filteredProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
       case 'price-low': return a.price - b.price;
@@ -624,7 +690,7 @@ const Products = () => {
           <div className="text-sm text-gray-600 mb-4">{error}</div>
           <button 
             onClick={() => window.location.reload()}
-            className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700"
+            className="bg-rosa-primary text-white px-4 py-2 rounded hover:bg-rosa-dark transition-colors"
           >
             Reintentar
           </button>
@@ -636,8 +702,8 @@ const Products = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Nuestros Productos</h1>
-        <p className="text-lg text-gray-600">Explora nuestra colección de joyería de alta calidad</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Nuestros Productos</h1>
+        <p className="text-base md:text-lg text-gray-600">Explora nuestra colección de joyería de alta calidad</p>
       </div>
 
       {/* Filters */}
@@ -671,7 +737,7 @@ const Products = () => {
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {filteredProducts.map(product => (
           <ProductCard key={product.id} product={product} />
         ))}
@@ -687,7 +753,7 @@ const Products = () => {
   );
 };
 
-// Componente de Login actualizado para usar Firebase Auth
+// Componente de Login
 const LoginModal = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -777,7 +843,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-primary focus:border-rosa-primary"
                 required
                 disabled={isLoading}
               />
@@ -792,7 +858,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-primary focus:border-rosa-primary"
                       disabled={isLoading}
                     />
                   </div>
@@ -804,7 +870,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-primary focus:border-rosa-primary"
                     required
                     disabled={isLoading}
                     minLength={6}
@@ -816,7 +882,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="w-full bg-rosa-primary text-white py-3 rounded-lg hover:bg-rosa-dark transition-colors disabled:opacity-50"
             >
               {isLoading ? 'Procesando...' : 
                showResetPassword ? 'Enviar Email' :
@@ -829,7 +895,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               <>
                 <button
                   onClick={() => {setIsSignUp(!isSignUp); clearAuthError();}}
-                  className="text-amber-700 hover:text-amber-800 text-sm"
+                  className="text-rosa-primary hover:text-rosa-dark text-sm"
                   disabled={isLoading}
                 >
                   {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
@@ -852,7 +918,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             {showResetPassword && (
               <button
                 onClick={() => {setShowResetPassword(false); clearAuthError();}}
-                className="text-amber-700 hover:text-amber-800 text-sm"
+                className="text-rosa-primary hover:text-rosa-dark text-sm"
                 disabled={isLoading}
               >
                 Volver al login
@@ -865,7 +931,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   );
 };
 
-// Componente Cart (mantiene la misma lógica)
+// Componente Cart
 const Cart = () => {
   const { cartItems, updateQuantity, removeFromCart, getTotalPrice, isCartOpen, setIsCartOpen, clearCart } = useCart();
 
@@ -902,16 +968,16 @@ const Cart = () => {
               <div className="space-y-4">
                 {cartItems.map(item => (
                   <div key={item.id} className="flex items-center space-x-3 border-b pb-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-rosa-light to-rosa-primary rounded-lg flex items-center justify-center">
                       {item.imageUrl && item.imageUrl !== '/api/placeholder/300/300' ? (
                         <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" />
                       ) : (
-                        <div className="text-amber-700 text-2xl">✨</div>
+                        <div className="text-rosa-dark text-2xl">✨</div>
                       )}
                     </div>
                     <div className="flex-1">
                       <h3 className="font-medium text-sm">{item.name}</h3>
-                      <p className="text-amber-700 font-semibold">${item.price.toLocaleString()}</p>
+                      <p className="text-rosa-primary font-semibold">${item.price.toLocaleString()}</p>
                       <div className="flex items-center space-x-2 mt-2">
                         <button 
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -944,11 +1010,11 @@ const Cart = () => {
             <div className="border-t p-4">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-lg font-semibold">Total:</span>
-                <span className="text-xl font-bold text-amber-700">${getTotalPrice().toLocaleString()}</span>
+                <span className="text-xl font-bold text-rosa-primary">${getTotalPrice().toLocaleString()}</span>
               </div>
               <button 
                 onClick={handleCheckout}
-                className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors"
+                className="w-full bg-rosa-primary text-white py-3 rounded-lg hover:bg-rosa-dark transition-colors shadow-lg"
               >
                 Procesar Compra
               </button>
@@ -960,26 +1026,26 @@ const Cart = () => {
   );
 };
 
-// Otros componentes (Membership, About, Footer) permanecen iguales...
+// Componente Membership
 const Membership = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Membresía "Socio Rosa Oliva"</h1>
-        <p className="text-lg text-gray-600">Únete a nuestra comunidad y obtén beneficios exclusivos</p>
+      <div className="text-center mb-8 md:mb-12">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Membresía "Socio Rosa Oliva"</h1>
+        <p className="text-base md:text-lg text-gray-600">Únete a nuestra comunidad y obtén beneficios exclusivos</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 mb-8">
+        <div className="bg-gradient-to-br from-rosa-light to-white rounded-2xl p-6 md:p-8 mb-8 shadow-lg">
           <div className="text-center mb-8">
-            <div className="text-4xl font-bold text-amber-700 mb-2">$500 MXN</div>
-            <div className="text-lg text-gray-600">Anual</div>
+            <div className="text-3xl md:text-4xl font-bold text-rosa-primary mb-2">$500 MXN</div>
+            <div className="text-base md:text-lg text-gray-600">Anual</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-6 h-6 bg-rosa-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   <div className="text-white text-sm">✓</div>
                 </div>
                 <div>
@@ -989,7 +1055,7 @@ const Membership = () => {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-6 h-6 bg-rosa-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   <div className="text-white text-sm">✓</div>
                 </div>
                 <div>
@@ -1001,7 +1067,7 @@ const Membership = () => {
 
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-6 h-6 bg-rosa-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   <div className="text-white text-sm">✓</div>
                 </div>
                 <div>
@@ -1011,7 +1077,7 @@ const Membership = () => {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-6 h-6 bg-rosa-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   <div className="text-white text-sm">✓</div>
                 </div>
                 <div>
@@ -1023,7 +1089,7 @@ const Membership = () => {
           </div>
 
           <div className="text-center">
-            <button className="bg-amber-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-amber-700 transition-colors">
+            <button className="bg-rosa-primary text-white px-6 md:px-8 py-3 rounded-lg text-base md:text-lg hover:bg-rosa-dark transition-colors shadow-lg">
               Obtener Membresía
             </button>
           </div>
@@ -1032,26 +1098,26 @@ const Membership = () => {
         {/* Business Models */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Venta a Medio Mayoreo</h3>
-            <p className="text-gray-600 mb-4">Para compras mínimas de $2,500 MXN, obtén un 25% de descuento.</p>
-            <div className="bg-amber-50 p-3 rounded">
-              <div className="text-amber-700 font-semibold">25% de descuento</div>
+            <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">Venta a Medio Mayoreo</h3>
+            <p className="text-gray-600 mb-4 text-sm md:text-base">Para compras mínimas de $2,500 MXN, obtén un 25% de descuento.</p>
+            <div className="bg-rosa-light p-3 rounded">
+              <div className="text-rosa-primary font-semibold">25% de descuento</div>
               <div className="text-sm text-gray-600">Compra mínima: $2,500 MXN</div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Venta a Mayoreo</h3>
-            <p className="text-gray-600 mb-4">Si tu compra mínima es de $5,000 MXN, te ofrecemos un 50% de descuento.</p>
-            <div className="bg-amber-50 p-3 rounded">
-              <div className="text-amber-700 font-semibold">50% de descuento</div>
+            <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">Venta a Mayoreo</h3>
+            <p className="text-gray-600 mb-4 text-sm md:text-base">Si tu compra mínima es de $5,000 MXN, te ofrecemos un 50% de descuento.</p>
+            <div className="bg-rosa-light p-3 rounded">
+              <div className="text-rosa-primary font-semibold">50% de descuento</div>
               <div className="text-sm text-gray-600">Compra mínima: $5,000 MXN</div>
             </div>
           </div>
         </div>
 
         <div className="bg-gray-50 p-6 rounded-lg text-center">
-          <p className="text-gray-700 text-lg">
+          <p className="text-gray-700 text-base md:text-lg">
             Ideal para clientes frecuentes o para quienes buscan iniciar su propio negocio de joyería con el respaldo de Rosa Oliva.
           </p>
         </div>
@@ -1060,26 +1126,27 @@ const Membership = () => {
   );
 };
 
+// Componente About
 const About = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Nuestra Historia</h1>
-        <p className="text-lg text-gray-600">Conoce el legado que inspira todo lo que hacemos</p>
+      <div className="text-center mb-8 md:mb-12">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Nuestra Historia</h1>
+        <p className="text-base md:text-lg text-gray-600">Conoce el legado que inspira todo lo que hacemos</p>
       </div>
 
       <div className="max-w-4xl mx-auto space-y-12">
         {/* Historia */}
-        <div className="bg-white p-8 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">El Legado de Rosa Oliva</h2>
-          <div className="space-y-4 text-gray-700">
+        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">El Legado de Rosa Oliva</h2>
+          <div className="space-y-4 text-gray-700 text-sm md:text-base">
             <p>
               Rosa Oliva Joyería es un homenaje vivo a nuestra madre Rosa Oliva. Una mujer incansable que creyó firmemente en el poder de la autosuficiencia. Con dedicación, siempre encontró la manera de emprender, vendiendo joyería y ropa para forjarnos un futuro mejor.
             </p>
             <p>
               Tras su partida en 2021, nos heredó una filosofía de vida:
             </p>
-            <blockquote className="border-l-4 border-amber-600 pl-4 italic text-lg text-amber-700">
+            <blockquote className="border-l-4 border-rosa-primary pl-4 italic text-base md:text-lg text-rosa-dark">
               "Enseñar a pescar es más valioso que dar el pescado."
             </blockquote>
             <p>
@@ -1089,64 +1156,64 @@ const About = () => {
         </div>
 
         {/* Visión */}
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-8 rounded-2xl">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Nuestra Visión</h2>
-          <p className="text-lg text-gray-700 mb-8">
+        <div className="bg-gradient-to-br from-rosa-light to-white p-6 md:p-8 rounded-2xl shadow-lg">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Nuestra Visión</h2>
+          <p className="text-base md:text-lg text-gray-700 mb-8">
             Construir una comunidad global de empresarios, inspirados en el legado de Rosa Oliva, que empodere a las personas en cada rincón del mundo.
           </p>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="p-4">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-3">
                 <div className="text-white text-2xl">💡</div>
               </div>
-              <div className="font-semibold text-gray-900">Inspiración</div>
+              <div className="font-semibold text-gray-900 text-sm md:text-base">Inspiración</div>
             </div>
             <div className="p-4">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-3">
                 <div className="text-white text-2xl">🚀</div>
               </div>
-              <div className="font-semibold text-gray-900">Emprender</div>
+              <div className="font-semibold text-gray-900 text-sm md:text-base">Emprender</div>
             </div>
             <div className="p-4">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-3">
                 <div className="text-white text-2xl">🌟</div>
               </div>
-              <div className="font-semibold text-gray-900">Nuevos comienzos</div>
+              <div className="font-semibold text-gray-900 text-sm md:text-base">Nuevos comienzos</div>
             </div>
             <div className="p-4">
-              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-rosa-primary to-rosa-secondary rounded-full flex items-center justify-center mx-auto mb-3">
                 <div className="text-white text-2xl">🌍</div>
               </div>
-              <div className="font-semibold text-gray-900">Comunidad global</div>
+              <div className="font-semibold text-gray-900 text-sm md:text-base">Comunidad global</div>
             </div>
           </div>
         </div>
 
         {/* Contact */}
-        <div className="bg-white p-8 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Contáctanos</h2>
+        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Contáctanos</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="w-12 h-12 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-rosa-primary rounded-full flex items-center justify-center mx-auto mb-3">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Ubicación</h3>
-              <p className="text-gray-600">Oaxaca, México</p>
+              <p className="text-gray-600 text-sm">Oaxaca, México</p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-rosa-primary rounded-full flex items-center justify-center mx-auto mb-3">
                 <Phone className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Teléfono</h3>
-              <p className="text-gray-600">+52 951 XXX XXXX</p>
+              <p className="text-gray-600 text-sm">+52 951 426 4996 </p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-rosa-primary rounded-full flex items-center justify-center mx-auto mb-3">
                 <Mail className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
-              <p className="text-gray-600">info@rosaolivajoyeria.com</p>
+              <p className="text-gray-600 text-sm">info@rosaolivajoyeria.com</p>
             </div>
           </div>
         </div>
@@ -1155,50 +1222,125 @@ const About = () => {
   );
 };
 
+// Footer actualizado con redes sociales dinámicas
 const Footer = () => {
+  const { config, loading } = useSiteConfig();
+  const socialMedia = config?.socialMedia || {};
+
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          {/* Logo y descripción */}
           <div>
-            <div className="text-2xl font-bold text-amber-400 mb-4">Rosa Oliva</div>
-            <p className="text-gray-400">
+            <div className="flex items-center space-x-2 mb-4">
+              <img 
+                src="/logo-rosa-oliva.png" 
+                alt="Rosa Oliva Logo" 
+                className="w-10 h-10 object-contain"
+              />
+              <div className="text-xl md:text-2xl font-bold text-rosa-primary">Rosa Oliva</div>
+            </div>
+            <p className="text-gray-400 text-sm">
               Un legado que impulsa nuevos comienzos a través de la joyería de calidad.
             </p>
           </div>
           
+          {/* Enlaces */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Enlaces</h3>
-            <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white">Inicio</a></li>
-              <li><a href="#" className="hover:text-white">Productos</a></li>
-              <li><a href="#" className="hover:text-white">Membresía</a></li>
-              <li><a href="#" className="hover:text-white">Nosotros</a></li>
+            <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-white">Enlaces</h3>
+            <ul className="space-y-2 text-gray-400 text-sm">
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Inicio</a></li>
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Productos</a></li>
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Membresía</a></li>
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Nosotros</a></li>
             </ul>
           </div>
           
+          {/* Soporte */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Soporte</h3>
-            <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white">Contacto</a></li>
-              <li><a href="#" className="hover:text-white">Envíos</a></li>
-              <li><a href="#" className="hover:text-white">Devoluciones</a></li>
-              <li><a href="#" className="hover:text-white">FAQ</a></li>
+            <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-white">Soporte</h3>
+            <ul className="space-y-2 text-gray-400 text-sm">
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Contacto</a></li>
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Envíos</a></li>
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">Devoluciones</a></li>
+              <li><a href="#" className="hover:text-rosa-primary transition-colors">FAQ</a></li>
             </ul>
           </div>
           
+          {/* Redes sociales dinámicas */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Síguenos</h3>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white">Facebook</a>
-              <a href="#" className="text-gray-400 hover:text-white">Instagram</a>
-              <a href="#" className="text-gray-400 hover:text-white">WhatsApp</a>
+            <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-white">Síguenos</h3>
+            <div className="space-y-3">
+              {socialMedia.facebook && (
+                <a 
+                  href={socialMedia.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 text-gray-400 hover:text-rosa-primary transition-colors text-sm"
+                >
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">f</span>
+                  </div>
+                  <span>Facebook</span>
+                </a>
+              )}
+              
+              {socialMedia.instagram && (
+                <a 
+                  href={socialMedia.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 text-gray-400 hover:text-rosa-primary transition-colors text-sm"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">📷</span>
+                  </div>
+                  <span>Instagram</span>
+                </a>
+              )}
+              
+              {socialMedia.whatsapp && (
+                <a 
+                  href={`https://wa.me/${socialMedia.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 text-gray-400 hover:text-rosa-primary transition-colors text-sm"
+                >
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">💬</span>
+                  </div>
+                  <span>WhatsApp</span>
+                </a>
+              )}
+              
+              {socialMedia.email && (
+                <a 
+                  href={`mailto:${socialMedia.email}`}
+                  className="flex items-center space-x-2 text-gray-400 hover:text-rosa-primary transition-colors text-sm"
+                >
+                  <Mail className="w-5 h-5" />
+                  <span className="truncate">{socialMedia.email}</span>
+                </a>
+              )}
+              
+              {socialMedia.phone && (
+                <a 
+                  href={`tel:${socialMedia.phone}`}
+                  className="flex items-center space-x-2 text-gray-400 hover:text-rosa-primary transition-colors text-sm"
+                >
+                  <Phone className="w-5 h-5" />
+                  <span>{socialMedia.phone}</span>
+                </a>
+              )}
             </div>
           </div>
         </div>
         
-        <div className="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400">
-          <p>&copy; 2024 Rosa Oliva Joyería. Todos los derechos reservados.</p>
+        <div className="border-t border-gray-700 pt-6 mt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            &copy; {new Date().getFullYear()} Rosa Oliva Joyería. Todos los derechos reservados.
+          </p>
         </div>
       </div>
     </footer>
@@ -1214,6 +1356,8 @@ const AppContent = () => {
     switch (currentView) {
       case 'admin':
         return isAdmin() ? <AdminPanel /> : <div className="p-8 text-center">Acceso denegado</div>;
+      case 'siteConfig':
+        return isAdmin() ? <SiteConfigPanel /> : <div className="p-8 text-center">Acceso denegado</div>;
       case 'products':
         return <Products />;
       case 'membership':
@@ -1235,6 +1379,7 @@ const AppContent = () => {
   );
 };
 
+// Componente raíz de la App
 const App = () => {
   return (
     <AuthProvider>
