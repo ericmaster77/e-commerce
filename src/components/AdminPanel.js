@@ -1,14 +1,16 @@
+// src/components/AdminPanel.js - ACTUALIZADO CON CAMPO SKU
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, Upload, Eye, EyeOff, RefreshCw, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Upload, Eye, EyeOff, RefreshCw, AlertCircle, FileSpreadsheet, QrCode } from 'lucide-react';
 import { useAdminProducts } from '../hooks/useFirestore';
 import { useAuth } from '../contexts/AuthContext';
 import { productService } from '../services/productService';
 import BulkImport from './BulkImport';
 
-// Componente ProductForm - CORREGIDO
+// Componente ProductForm - CON CAMPO SKU
 const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
   const [formData, setFormData] = useState({
     name: product?.name || '',
+    sku: product?.sku || '', // ✅ AGREGADO
     price: product?.price || '',
     originalPrice: product?.originalPrice || '',
     category: product?.category || 'Anillos',
@@ -67,6 +69,13 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
     if (!formData.name.trim()) newErrors.name = 'El nombre es requerido';
     if (formData.name.length > 100) newErrors.name = 'El nombre debe tener menos de 100 caracteres';
     
+    // ✅ VALIDACIÓN DE SKU
+    if (!formData.sku.trim()) {
+      newErrors.sku = 'El código SKU es requerido';
+    } else if (formData.sku.length > 20) {
+      newErrors.sku = 'El SKU debe tener menos de 20 caracteres';
+    }
+    
     if (!formData.price || formData.price <= 0) newErrors.price = 'El precio debe ser mayor a 0';
     if (formData.price > 1000000) newErrors.price = 'El precio debe ser menor a $1,000,000';
     
@@ -95,7 +104,6 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
         ? Math.round(((formData.originalPrice - formData.price) / formData.originalPrice) * 100)
         : 0;
       
-      // ✅ CORRECCIÓN: NO incluir campo 'id', Firebase lo genera automáticamente
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
@@ -115,8 +123,8 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl my-8 mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
@@ -193,22 +201,46 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
               {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
 
+            {/* ✅ CAMPO SKU AGREGADO */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoría
+                Código SKU / Anaquel *
               </label>
-              <select
-                name="category"
-                value={formData.category}
+              <input
+                type="text"
+                name="sku"
+                value={formData.sku}
                 onChange={handleInputChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-amber-500 font-mono ${
+                  errors.sku ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Ej: BR-001, A-123"
                 disabled={isSubmitting}
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
+                maxLength={20}
+              />
+              {errors.sku && <p className="text-red-500 text-sm mt-1">{errors.sku}</p>}
+              <p className="text-xs text-gray-500 mt-1">
+                📍 Este código aparecerá en el anaquel físico
+              </p>
             </div>
+          </div>
+
+          {/* Categoría */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Categoría
+            </label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+              disabled={isSubmitting}
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
           </div>
 
           {/* Precios */}
@@ -349,7 +381,7 @@ const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
   );
 };
 
-// Componente ProductList - CORREGIDO
+// Componente ProductList - SIN CAMBIOS (ya tiene SKU)
 const ProductList = ({ products, onEdit, onDelete, loading }) => {
   const [showHidden, setShowHidden] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -495,7 +527,9 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
                       {product.sku && (
                         <>
                           <span>•</span>
-                          <span>SKU: {product.sku}</span>
+                          <span className="font-mono bg-blue-50 px-2 py-0.5 rounded text-blue-700">
+                            SKU: {product.sku}
+                          </span>
                         </>
                       )}
                     </div>
@@ -541,7 +575,6 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
                     <button
                       onClick={() => {
                         if (window.confirm(`¿Estás seguro de que deseas eliminar "${product.name}"?`)) {
-                          // ✅ CORRECCIÓN: Validar imageUrl como string
                           const imageUrlString = typeof product.imageUrl === 'string' 
                             ? product.imageUrl 
                             : '';
@@ -610,7 +643,7 @@ const ProductList = ({ products, onEdit, onDelete, loading }) => {
   );
 };
 
-// Componente principal AdminPanel
+// Componente principal AdminPanel - AGREGADO BOTÓN QR
 const AdminPanel = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -669,7 +702,6 @@ const AdminPanel = () => {
     try {
       let result;
       if (editingProduct) {
-        // ✅ CORRECCIÓN: Validar oldImageUrl como string
         const oldImageUrl = typeof editingProduct.imageUrl === 'string' 
           ? editingProduct.imageUrl 
           : '';
@@ -704,7 +736,6 @@ const AdminPanel = () => {
 
   const handleDeleteProduct = async (productId, imageUrl) => {
     try {
-      // ✅ CORRECCIÓN: Validar imageUrl como string
       const imageUrlString = typeof imageUrl === 'string' ? imageUrl : '';
       
       const result = await deleteProduct(productId, imageUrlString);

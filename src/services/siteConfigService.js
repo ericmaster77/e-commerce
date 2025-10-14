@@ -1,4 +1,4 @@
-// src/services/siteConfigService.js
+// src/services/siteConfigService.js - CON SOPORTE DE VIDEO
 import { db, storage } from '../firebase/config';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -16,7 +16,6 @@ export const siteConfigService = {
           config: configDoc.data()
         };
       } else {
-        // Retornar configuración por defecto si no existe
         return {
           success: true,
           config: this.getDefaultConfig()
@@ -38,7 +37,6 @@ export const siteConfigService = {
       siteName: 'Rosa Oliva Joyería',
       siteDescription: 'Un Legado que Impulsa Nuevos Comienzos',
       
-      // Redes sociales
       socialMedia: {
         facebook: '',
         instagram: '',
@@ -47,11 +45,11 @@ export const siteConfigService = {
         phone: '+52 951 XXX XXXX'
       },
       
-      // Banners del carrusel (máximo 3)
       banners: [
         {
           id: 1,
           imageUrl: '',
+          mediaType: 'image', // 'image' o 'video'
           title: 'Banner 1',
           link: '',
           active: true,
@@ -60,6 +58,7 @@ export const siteConfigService = {
         {
           id: 2,
           imageUrl: '',
+          mediaType: 'image',
           title: 'Banner 2',
           link: '',
           active: true,
@@ -68,6 +67,7 @@ export const siteConfigService = {
         {
           id: 3,
           imageUrl: '',
+          mediaType: 'image',
           title: 'Banner 3',
           link: '',
           active: true,
@@ -75,7 +75,6 @@ export const siteConfigService = {
         }
       ],
       
-      // Información de contacto
       contact: {
         address: 'Oaxaca, México',
         city: 'Oaxaca',
@@ -84,14 +83,12 @@ export const siteConfigService = {
         zipCode: ''
       },
       
-      // Configuración de la tienda
       storeSettings: {
         showPricesPublic: true,
         allowGuestCheckout: false,
         maintenanceMode: false
       },
       
-      // Metadata
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -147,52 +144,62 @@ export const siteConfigService = {
     }
   },
 
-  // Subir imagen de banner
-  async uploadBannerImage(file, bannerId) {
+  // ✅ ACTUALIZADO: Subir imagen o video de banner
+  async uploadBannerMedia(file, bannerId) {
     try {
-      console.log(`📤 Subiendo banner ${bannerId}...`);
+      console.log(`📤 Subiendo media para banner ${bannerId}...`);
       
-      // Validar imagen
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      // ✅ Validar tipo de archivo (imagen o video)
+      const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      const videoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+      const validTypes = [...imageTypes, ...videoTypes];
+      
       if (!validTypes.includes(file.type)) {
         return {
           success: false,
-          error: 'Solo se permiten imágenes JPG, PNG o WebP'
+          error: 'Solo se permiten imágenes (JPG, PNG, WebP, GIF) o videos (MP4, WebM, OGG, MOV)'
         };
       }
       
-      // Validar tamaño (máximo 2MB)
-      if (file.size > 2 * 1024 * 1024) {
+      // ✅ Validar tamaño (máximo 50MB para videos, 5MB para imágenes)
+      const isVideo = videoTypes.includes(file.type);
+      const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+      
+      if (file.size > maxSize) {
+        const maxSizeMB = isVideo ? '50MB' : '5MB';
         return {
           success: false,
-          error: 'La imagen debe ser menor a 2MB'
+          error: `El archivo debe ser menor a ${maxSizeMB}`
         };
       }
       
       // Subir a Firebase Storage
       const timestamp = Date.now();
-      const fileName = `banner_${bannerId}_${timestamp}.${file.name.split('.').pop()}`;
+      const extension = file.name.split('.').pop();
+      const fileName = `banner_${bannerId}_${timestamp}.${extension}`;
       const storageRef = ref(storage, `banners/${fileName}`);
       
       const snapshot = await uploadBytes(storageRef, file, {
         contentType: file.type,
         customMetadata: {
           bannerId: bannerId.toString(),
+          mediaType: isVideo ? 'video' : 'image',
           uploadedAt: new Date().toISOString()
         }
       });
       
       const downloadURL = await getDownloadURL(snapshot.ref);
       
-      console.log(`✅ Banner ${bannerId} subido: ${downloadURL}`);
+      console.log(`✅ Media subida: ${downloadURL}`);
       
       return {
         success: true,
         url: downloadURL,
-        path: snapshot.ref.fullPath
+        path: snapshot.ref.fullPath,
+        mediaType: isVideo ? 'video' : 'image'
       };
     } catch (error) {
-      console.error('Error al subir banner:', error);
+      console.error('Error al subir media:', error);
       return {
         success: false,
         error: error.message
@@ -200,21 +207,19 @@ export const siteConfigService = {
     }
   },
 
-  // Actualizar banner específico
-  async updateBanner(bannerId, bannerData, imageFile = null) {
+  // ✅ ACTUALIZADO: Actualizar banner con soporte de video
+  async updateBanner(bannerId, bannerData, mediaFile = null) {
     try {
       const configRef = doc(db, 'siteConfig', 'main');
       const configDoc = await getDoc(configRef);
       
       if (!configDoc.exists()) {
-        // Crear configuración por defecto si no existe
         await setDoc(configRef, this.getDefaultConfig());
       }
       
       const currentConfig = configDoc.data() || this.getDefaultConfig();
       let banners = [...(currentConfig.banners || [])];
       
-      // Encontrar el índice del banner
       const bannerIndex = banners.findIndex(b => b.id === bannerId);
       
       if (bannerIndex === -1) {
@@ -224,16 +229,19 @@ export const siteConfigService = {
         };
       }
       
-      // Si hay nueva imagen, subirla
-      let imageUrl = banners[bannerIndex].imageUrl;
-      if (imageFile) {
-        const uploadResult = await this.uploadBannerImage(imageFile, bannerId);
+      // Si hay nuevo archivo (imagen o video), subirlo
+      let mediaUrl = banners[bannerIndex].imageUrl;
+      let mediaType = banners[bannerIndex].mediaType || 'image';
+      
+      if (mediaFile) {
+        const uploadResult = await this.uploadBannerMedia(mediaFile, bannerId);
         if (uploadResult.success) {
-          // Eliminar imagen anterior si existe
-          if (imageUrl && !imageUrl.includes('placeholder')) {
-            await this.deleteBannerImage(imageUrl);
+          // Eliminar archivo anterior si existe
+          if (mediaUrl && !mediaUrl.includes('placeholder')) {
+            await this.deleteBannerMedia(mediaUrl);
           }
-          imageUrl = uploadResult.url;
+          mediaUrl = uploadResult.url;
+          mediaType = uploadResult.mediaType;
         } else {
           return uploadResult;
         }
@@ -243,7 +251,8 @@ export const siteConfigService = {
       banners[bannerIndex] = {
         ...banners[bannerIndex],
         ...bannerData,
-        imageUrl
+        imageUrl: mediaUrl,
+        mediaType: mediaType
       };
       
       // Guardar en Firestore
@@ -268,25 +277,24 @@ export const siteConfigService = {
     }
   },
 
-  // Eliminar imagen de banner
-  async deleteBannerImage(imageUrl) {
+  // Renombrado de función para consistencia
+  async deleteBannerMedia(mediaUrl) {
     try {
-      if (!imageUrl || imageUrl.includes('placeholder')) {
+      if (!mediaUrl || mediaUrl.includes('placeholder')) {
         return { success: true };
       }
       
-      // Extraer path de la URL
-      const match = imageUrl.match(/o\/(.+?)\?/);
+      const match = mediaUrl.match(/o\/(.+?)\?/);
       if (match) {
         const path = decodeURIComponent(match[1]);
-        const imageRef = ref(storage, path);
-        await deleteObject(imageRef);
-        console.log(`🗑️ Banner eliminado: ${path}`);
+        const mediaRef = ref(storage, path);
+        await deleteObject(mediaRef);
+        console.log(`🗑️ Media eliminada: ${path}`);
       }
       
       return { success: true };
     } catch (error) {
-      console.error('Error al eliminar banner:', error);
+      console.error('Error al eliminar media:', error);
       return {
         success: false,
         error: error.message
