@@ -112,7 +112,7 @@ const Header = ({ currentView, setCurrentView }) => {
               onClick={() => setCurrentView('home')}
             >
               <img 
-                src="/logo-rosa-oliva.png" 
+                src={isMinimal ? "/logo-rosa-oliva-black.png" : "/logo-rosa-oliva.png"}
                 alt="Rosa Oliva Logo" 
                 className="w-10 h-10 md:w-12 md:h-12 object-contain"
               />
