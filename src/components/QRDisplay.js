@@ -9,11 +9,11 @@ const QRDisplay = ({ url, onClose }) => {
   const { classes, isMinimal } = useTheme();
   
   // URL del QR (usando API pública)
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(url)}`;
-  const qrUrlHD = `https://api.qrserver.com/v1/create-qr-code/?size=2000x2000&data=${encodeURIComponent(url)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(url)}/#/buscar-producto`;
+  const qrUrlHD = `https://api.qrserver.com/v1/create-qr-code/?size=2000x2000&data=${encodeURIComponent(url)}/#/buscar-producto`;
 
   const handleCopyUrl = () => {
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(`${url}/#/buscar-producto`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -61,12 +61,12 @@ const QRDisplay = ({ url, onClose }) => {
             {/* URL */}
             <div className="mb-6">
               <label className={`block text-sm font-medium ${classes.sectionTitle} mb-2`}>
-                URL del sitio:
+                URL del catálogo:
               </label>
               <div className="flex items-center gap-2">
                 <input 
                   type="text"
-                  value={url}
+                  value={`${url}/#/buscar-producto`}
                   readOnly
                   className={`flex-1 p-3 border rounded-lg ${classes.filterInput} bg-gray-50`}
                 />
@@ -114,9 +114,8 @@ const QRDisplay = ({ url, onClose }) => {
               </h3>
               <ul className={`${classes.missionText} text-sm space-y-1`}>
                 <li>• Descarga el QR en la resolución que necesites</li>
-                <li>• Imprímelo en material publicitario</li>
+                <li>• Muestralo a tus amigos</li>
                 <li>• Comparte en redes sociales</li>
-                <li>• Úsalo en tu tienda física</li>
               </ul>
             </div>
 

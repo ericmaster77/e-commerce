@@ -1,6 +1,6 @@
 // src/App.js - CON INTEGRACIÓN DE QR, BÚSQUEDA POR SKU Y SISTEMA DE TEMAS
-import React, { useState, useEffect, createContext, useContext } from 'react';
-import { ShoppingCart, User, Search, Menu, X, Plus, Minus, Star, Filter, MapPin, Phone, Mail, Palette } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, User, Search, Menu, X, Plus, Minus, Star, Filter, MapPin, Phone, Mail, Palette, QrCode } from 'lucide-react';
 import AdminPanel from './components/AdminPanel';
 import BannerCarousel from './components/BannerCarousel';
 import SiteConfigPanel from './components/SiteConfigPanel';
@@ -11,80 +11,10 @@ import { useTheme } from './contexts/ThemeContext';
 import { useProducts, useFeaturedProducts, useDataInitialization } from './hooks/useFirestore';
 import { usePricing } from './hooks/usePricing';
 import { useSiteConfig } from './hooks/useSiteConfig';
-
-// Context para el carrito de compras
-const CartContext = createContext();
-
-const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart debe ser usado dentro de CartProvider');
-  }
-  return context;
-};
-
-const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-
-  const addToCart = (product, quantity = 1) => {
-    setCartItems(prev => {
-      const existingItem = prev.find(item => item.id === product.id);
-      if (existingItem) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity }];
-    });
-  };
-
-  const removeFromCart = (productId) => {
-    setCartItems(prev => prev.filter(item => item.id !== productId));
-  };
-
-  const updateQuantity = (productId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === productId ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const getTotalItems = () => {
-    return cartItems.reduce((total, item) => total + item.quantity, 0);
-  };
-
-  const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  return (
-    <CartContext.Provider value={{
-      cartItems,
-      addToCart,
-      removeFromCart,
-      updateQuantity,
-      getTotalItems,
-      getTotalPrice,
-      clearCart,
-      isCartOpen,
-      setIsCartOpen
-    }}>
-      {children}
-    </CartContext.Provider>
-  );
-};
+import KitEmprendedor from './components/KitEmprendedor';
+import QRDisplay from './components/QRDisplay';
+import { CartProvider, useCart } from './contexts/CartContext';
+import Cart from './components/Cart'; // Importa el componente Cart desde su archivo separado
 
 // ✅ Componente Header CON SISTEMA DE TEMAS
 const Header = ({ currentView, setCurrentView }) => {
@@ -182,6 +112,16 @@ const Header = ({ currentView, setCurrentView }) => {
                 }`}
               >
                 Membresía
+              </button>
+              <button 
+                onClick={() => window.open('#/buscar-producto','_blank')}
+                className={`text-sm lg:text-base font-medium transition-colors ${
+                  currentView === 'membership' 
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primary font-semibold'
+                    : `${classes.headerText} ${classes.linkHover}`
+                }`}
+              >
+                QRShowroom
               </button>
               <button 
                 onClick={() => setCurrentView('about')}
@@ -388,7 +328,6 @@ const Header = ({ currentView, setCurrentView }) => {
   );
 };
 
-// Componente ProductCard - SIN CAMBIOS
 // Componente ProductCard actualizado con temas
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
@@ -432,12 +371,7 @@ const ProductCard = ({ product }) => {
           Destacado
         </div>
       )}
-      {pricingInfo?.hasDiscount && (
-        <div className={`${classes.cardBadgeDiscount} text-xs px-2 py-1 absolute z-10 m-2 mt-8 rounded`}>
-          -{pricingInfo.discount}%
-        </div>
-      )}
-      
+            
       <div className="relative h-48 sm:h-56 md:h-64 bg-gray-200">
         {imageToShow ? (
           <div className="relative w-full h-full">
@@ -458,11 +392,11 @@ const ProductCard = ({ product }) => {
               onLoad={handleImageLoad}
               onError={handleImageError}
             />
-            {product.hasRealImage && !imageError && (
+            {/* {product.hasRealImage && !imageError && (
               <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
                 📸
               </div>
-            )}
+            )} */}
           </div>
         ) : (
           <div className={`absolute inset-0 ${classes.placeholderGradient} flex items-center justify-center`}>
@@ -482,7 +416,7 @@ const ProductCard = ({ product }) => {
           {product.description}
         </p>
         
-        <div className="flex items-center mb-2">
+        {/* <div className="flex items-center mb-2">
           <div className="flex items-center">
             {[...Array(5)].map((_, i) => (
               <Star 
@@ -496,7 +430,7 @@ const ProductCard = ({ product }) => {
             ))}
           </div>
           <span className="text-xs md:text-sm text-gray-600 ml-2">({product.rating})</span>
-        </div>
+        </div> */}
 
         <div className="flex items-center justify-between mb-3">
           <div className="flex-1">
@@ -508,6 +442,11 @@ const ProductCard = ({ product }) => {
                 <span className="text-xs md:text-sm text-gray-500 line-through">
                   ${product.originalPrice.toLocaleString()}
                 </span>
+              )}
+              {pricingInfo?.hasDiscount && (
+                <div className={`${classes.cardBadgeDiscount} text-xs rounded`}>
+                  -{pricingInfo.discount}%
+                </div>
               )}
             </div>
             
@@ -521,9 +460,9 @@ const ProductCard = ({ product }) => {
               </div>
             )}
           </div>
-          <span className="text-xs md:text-sm text-gray-600 whitespace-nowrap ml-2">
+          {/* <span className="text-xs md:text-sm text-gray-600 whitespace-nowrap ml-2">
             {product.stock} disp.
-          </span>
+          </span> */}
         </div>
 
         <div className="flex items-center justify-between gap-2">
@@ -566,9 +505,9 @@ const ProductCard = ({ product }) => {
     </div>
   );
 };
-// Componente Home - SIN CAMBIOS
 // Componente Home actualizado con temas
 const Home = ({ setCurrentView }) => {
+  const [showQRDisplay, setShowQRDisplay] = useState(false);
   const { featuredProducts, loading, error } = useFeaturedProducts();
   const { initializeData, initializing } = useDataInitialization();
   const { classes } = useTheme(); // ✅ AGREGAR ESTO
@@ -664,6 +603,28 @@ const Home = ({ setCurrentView }) => {
           </div>
         </div>
       </section>
+
+      {/* Botón para mostrar el QR del sitio */}
+
+<section className="py-8">
+  <div className="max-w-7xl mx-auto px-4 text-center">
+    <button
+      onClick={() => setShowQRDisplay(true)}
+      className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:shadow-xl transition-all"
+    >
+      <QrCode className="w-6 h-6" />
+      Ver QR del Sitio
+    </button>
+  </div>
+</section>
+<KitEmprendedor />
+
+{showQRDisplay && (
+  <QRDisplay 
+    url={window.location.origin}
+    onClose={() => setShowQRDisplay(false)}
+  />
+)}
 
       {/* Featured Products Section */}
       <section className="py-12 md:py-16">
@@ -769,7 +730,7 @@ const Products = () => {
     switch (sortBy) {
       case 'price-low': return a.price - b.price;
       case 'price-high': return b.price - a.price;
-      case 'rating': return b.rating - a.rating;
+      // case 'rating': return b.rating - a.rating;
       default: return b.featured - a.featured;
     }
   });
@@ -842,7 +803,7 @@ const Products = () => {
             <option value="featured">Destacados</option>
             <option value="price-low">Precio: Menor a Mayor</option>
             <option value="price-high">Precio: Mayor a Menor</option>
-            <option value="rating">Mejor Calificados</option>
+            {/* <option value="rating">Mejor Calificados</option> */}
           </select>
         </div>
       </div>
@@ -1036,109 +997,6 @@ const LoginModal = ({ isOpen, onClose }) => {
               </button>
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Cart = () => {
-  const { cartItems, updateQuantity, removeFromCart, getTotalPrice, isCartOpen, setIsCartOpen, clearCart } = useCart();
-  const { classes } = useTheme(); // ✅ AGREGAR
-
-  if (!isCartOpen) return null;
-
-  const handleCheckout = () => {
-    alert('¡Procesando compra! En una implementación real, aquí se integraría con un sistema de pagos.');
-    clearCart();
-    setIsCartOpen(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsCartOpen(false)} />
-      <div className={`absolute right-0 top-0 h-full w-full max-w-md ${classes.cartBg} shadow-xl`}>
-        <div className="flex flex-col h-full">
-          <div className={`flex items-center justify-between p-4 ${classes.cartHeader}`}>
-            <h2 className={`${classes.sectionTitle} text-lg font-semibold`}>
-              Carrito de Compras
-            </h2>
-            <button 
-              onClick={() => setIsCartOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4">
-            {cartItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p>Tu carrito está vacío</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {cartItems.map(item => (
-                  <div key={item.id} className="flex items-center space-x-3 border-b pb-4">
-                    <div className={`w-16 h-16 ${classes.placeholderGradient} rounded-lg flex items-center justify-center`}>
-                      {item.imageUrl && item.imageUrl !== '/api/placeholder/300/300' ? (
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                      ) : (
-                        <div className={`${classes.placeholderText} text-2xl`}>✨</div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className={`${classes.productTitle} font-medium text-sm`}>
-                        {item.name}
-                      </h3>
-                      <p className={`${classes.cartTotal} font-semibold`}>
-                        ${item.price.toLocaleString()}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <button 
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-sm w-8 text-center">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                        <button 
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-red-500 text-sm ml-2"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {cartItems.length > 0 && (
-            <div className="border-t p-4">
-              <div className="flex justify-between items-center mb-4">
-                <span className={`${classes.sectionTitle} text-lg font-semibold`}>Total:</span>
-                <span className={`${classes.cartTotal} text-xl font-bold`}>
-                  ${getTotalPrice().toLocaleString()}
-                </span>
-              </div>
-              <button 
-                onClick={handleCheckout}
-                className={`${classes.cartButton} w-full py-3 rounded-lg transition-colors shadow-lg`}
-              >
-                Procesar Compra
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -1488,7 +1346,7 @@ const Footer = () => {
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">f</span>
                   </div>
-                  <span>Facebook</span>
+                  {/* <span>Facebook</span> */}
                 </a>
               )}
               
@@ -1502,7 +1360,7 @@ const Footer = () => {
                   <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">📷</span>
                   </div>
-                  <span>Instagram</span>
+                  {/* <span>Instagram</span> */}
                 </a>
               )}
               
@@ -1516,11 +1374,11 @@ const Footer = () => {
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">💬</span>
                   </div>
-                  <span>WhatsApp</span>
+                  {/* <span>WhatsApp</span> */}
                 </a>
               )}
               
-              {socialMedia.email && (
+              {/* {socialMedia.email && (
                 <a 
                   href={`mailto:${socialMedia.email}`}
                   className={`flex items-center space-x-2 ${classes.footerText} ${classes.footerLink} text-sm`}
@@ -1528,9 +1386,9 @@ const Footer = () => {
                   <Mail className="w-5 h-5" />
                   <span className="truncate">{socialMedia.email}</span>
                 </a>
-              )}
+              )} */}
               
-              {socialMedia.phone && (
+              {/* {socialMedia.phone && (
                 <a 
                   href={`tel:${socialMedia.phone}`}
                   className={`flex items-center space-x-2 ${classes.footerText} ${classes.footerLink} text-sm`}
@@ -1538,7 +1396,7 @@ const Footer = () => {
                   <Phone className="w-5 h-5" />
                   <span>{socialMedia.phone}</span>
                 </a>
-              )}
+              )} */}
             </div>
           </div>
         </div>
@@ -1618,7 +1476,7 @@ const AppContent = () => {
 const App = () => {
   return (
     <AuthProvider>
-      <CartProvider>
+      <CartProvider> {/* Este debe ser el provider actualizado con cashback */}
         <AppContent />
       </CartProvider>
     </AuthProvider>

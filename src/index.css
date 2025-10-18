@@ -1,14 +1,37 @@
+/* Import Google Fonts: Nunito, Nunito Sans (para títulos) y Playfair Display (para texto) */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Nunito+Sans:wght@400;600;700&family=Playfair+Display:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Asegura que Tailwind respete nuestras fuentes por defecto */
+@layer base {
+  html, body {
+    font-family: 'Playfair Display', serif; /* texto principal */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Títulos y cabezeras usan Nunito / Nunito Sans */
+  h1, h2, h3, h4, h5, h6,
+  .sectionTitle, .productTitle, .cardTitle {
+    font-family: 'Nunito', 'Nunito Sans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  /* Opcional: forzar sans para elementos concretos */
+  .ui-sans {
+    font-family: 'Nunito Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* body ahora usa Playfair Display gracias a @layer base */
 }
+
+/* ...existing code... */
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',

@@ -46,11 +46,7 @@ const ProductCard = ({ product, addToCart }) => {
           Destacado
         </div>
       )}
-      {pricingInfo?.hasDiscount && (
-        <div className={`${classes.cardBadgeDiscount} text-xs px-2 py-1 absolute z-10 m-2 mt-8 rounded`}>
-          -{pricingInfo.discount}%
-        </div>
-      )}
+      
       
       {/* Image Section con Carousel */}
       <div className="relative h-48 sm:h-56 md:h-64 bg-gray-200">
@@ -81,7 +77,7 @@ const ProductCard = ({ product, addToCart }) => {
         </p>
         
         {/* Rating */}
-        <div className="flex items-center mb-2">
+        {/* <div className="flex items-center mb-2">
           <div className="flex items-center">
             {[...Array(5)].map((_, i) => (
               <Star 
@@ -95,7 +91,7 @@ const ProductCard = ({ product, addToCart }) => {
             ))}
           </div>
           <span className="text-xs md:text-sm text-gray-600 ml-2">({product.rating})</span>
-        </div>
+        </div> */}
 
         {/* Price Section */}
         <div className="flex items-center justify-between mb-3">
@@ -108,6 +104,11 @@ const ProductCard = ({ product, addToCart }) => {
                 <span className="text-xs md:text-sm text-gray-500 line-through">
                   ${product.originalPrice.toLocaleString()}
                 </span>
+              )}
+              {pricingInfo?.hasDiscount && (
+                <div className={`${classes.cardBadgeDiscount} text-xs px-2 py-1 absolute z-10 m-2 mt-8 rounded`}>
+                  -{pricingInfo.discount}%
+                </div>
               )}
             </div>
             

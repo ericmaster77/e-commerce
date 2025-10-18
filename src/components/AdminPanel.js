@@ -5,6 +5,7 @@ import { useAdminProducts } from '../hooks/useFirestore';
 import { useAuth } from '../contexts/AuthContext';
 import { productService } from '../services/productService';
 import BulkImport from './BulkImport';
+import CashbackReminders from './CashbackReminders';
 
 // Componente ProductForm - CON CAMPO SKU
 const ProductForm = ({ product, onSave, onCancel, isEditing }) => {
@@ -869,5 +870,6 @@ const AdminPanel = () => {
     </div>
   );
 };
+<CashbackReminders />
 
 export default AdminPanel;
