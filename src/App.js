@@ -15,9 +15,10 @@ import KitEmprendedor from './components/KitEmprendedor';
 import QRDisplay from './components/QRDisplay';
 import { CartProvider, useCart } from './contexts/CartContext';
 import Cart from './components/Cart'; // Importa el componente Cart desde su archivo separado
+import ProductImageCarousel from './components/ProductImageCarousel';
 
 // ✅ Componente Header CON SISTEMA DE TEMAS
-const Header = ({ currentView, setCurrentView }) => {
+const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { getTotalItems, setIsCartOpen } = useCart();
@@ -31,33 +32,35 @@ const Header = ({ currentView, setCurrentView }) => {
     }
   };
 
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentView !== 'products') {
+      setCurrentView('products');
+    }
+  };
+
   return (
     <>
       <header className={`${classes.header} sticky top-0 z-50 transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 md:h-20">
-            {/* Logo */}
+            {/* Logo MODIFICADO: Solo muestra la imagen grande y utiliza nuevas rutas */}
             <div 
-              className="flex items-center cursor-pointer space-x-2 md:space-x-3" 
+              // Quité el espacio lateral ya que solo hay un elemento
+              className="flex items-center cursor-pointer" 
               onClick={() => setCurrentView('home')}
             >
               <img 
-                src={isMinimal ? "/logo-rosa-oliva-black.png" : "/logo-rosa-oliva.png"}
+                src={isMinimal ? "/logo-rosa-oliva_full-black.png" : "/logo-rosa-oliva_full-green2.png"}
                 alt="Rosa Oliva Logo" 
-                className="w-10 h-10 md:w-12 md:h-12 object-contain"
+                // Aumenté el tamaño para que sea más visible y ocupe el área del texto
+                className="w-40 h-full md:w-48 object-contain py-1"
               />
-              <div>
-                <div className={`text-lg md:text-2xl font-bold ${classes.headerLogo} transition-colors`}>
-                  Rosa Oliva
-                </div>
-                <div className={`text-xs md:text-sm ${classes.headerText} -mt-1 transition-colors`}>
-                  Joyería
-                </div>
-              </div>
+              {/* Se eliminó el div con el texto del logo */}
             </div>
 
             {/* Navigation Desktop */}
-            <nav className="hidden md:flex space-x-4 lg:space-x-6 items-center">
+            <nav className="hidden md:flex flex-1 justify-around items-center px-4 lg:px-8">
               <button 
                 onClick={() => setCurrentView('home')}
                 className={`text-sm lg:text-base font-medium transition-colors ${
@@ -157,11 +160,19 @@ const Header = ({ currentView, setCurrentView }) => {
 
             {/* Right side icons */}
             <div className="flex items-center space-x-2 md:space-x-4">
-              <button className={`p-2 rounded-full transition-colors hidden sm:block ${
-                isMinimal ? 'hover:bg-gray-100' : 'hover:bg-rosa-light'
-              }`}>
-                <Search className={`w-5 h-5 ${classes.headerText}`} />
-              </button>
+              {/* BÚSQUEDA CON INPUT A LA IZQUIERDA */}
+              <div className="relative hidden sm:flex items-center">
+                <input 
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Buscar..."
+                  className={`pr-10 pl-4 py-2 rounded-full transition-colors text-sm ${
+                    isMinimal ? 'bg-gray-100 text-gray-900 border-gray-300' : 'bg-rosa-light text-gray-700 border-rosa-primary'
+                  } focus:outline-none focus:border-2`}
+                />
+                <Search className={`absolute right-3 w-5 h-5 ${classes.headerText}`} />
+              </div>
               
               {user ? (
                 <div className="flex items-center space-x-2">
@@ -378,7 +389,7 @@ const ProductCard = ({ product }) => {
             {imageLoading && (
               <div className={`absolute inset-0 ${classes.placeholderGradient} flex items-center justify-center`}>
                 <div className="animate-pulse">
-                  <div className={`${classes.placeholderText} text-4xl`}>📸</div>
+                  {/* <div className={`${classes.placeholderText} text-4xl`}></div> */}
                   <div className={`text-xs ${classes.placeholderText} mt-2`}>Cargando...</div>
                 </div>
               </div>
@@ -402,7 +413,7 @@ const ProductCard = ({ product }) => {
           <div className={`absolute inset-0 ${classes.placeholderGradient} flex items-center justify-center`}>
             <div className="text-center">
               <div className={`${classes.placeholderText} text-5xl md:text-6xl mb-2`}>✨</div>
-              <div className={`${classes.placeholderText} text-xs font-medium`}>Rosa Oliva</div>
+              <div className={`${classes.placeholderText} text-xs font-medium`}>Rosa oliva</div>
             </div>
           </div>
         )}
@@ -505,6 +516,7 @@ const ProductCard = ({ product }) => {
     </div>
   );
 };
+
 // Componente Home actualizado con temas
 const Home = ({ setCurrentView }) => {
   const [showQRDisplay, setShowQRDisplay] = useState(false);
@@ -713,17 +725,28 @@ const Home = ({ setCurrentView }) => {
 };
 
 // Mantener todos los demás componentes (Products, LoginModal, Cart, Membership, About, Footer)
-const Products = () => {
+const Products = ({ searchQuery, setSearchQuery, showProductDetail }) => {  // Añadimos los props para búsqueda y detalle
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [sortBy, setSortBy] = useState('featured');
   const { products, loading, error } = useProducts();
   const { classes } = useTheme(); // ✅ AGREGAR
   
+  const productsWithImages = products.filter(p => p.hasRealImage);
   const categories = ['Todos', ...new Set(products.map(p => p.category))];
   
-  let filteredProducts = products;
+  let filteredProducts = productsWithImages;
   if (selectedCategory !== 'Todos') {
     filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
+  }
+  
+  // ✅ Aplicar filtro de búsqueda (por nombre, descripción o SKU)
+  if (searchQuery) {
+    const lowerQuery = searchQuery.toLowerCase();
+    filteredProducts = filteredProducts.filter(p => 
+      p.name.toLowerCase().includes(lowerQuery) ||
+      p.description.toLowerCase().includes(lowerQuery) ||
+      (p.sku && p.sku.toLowerCase().includes(lowerQuery))
+    );
   }
   
   filteredProducts = [...filteredProducts].sort((a, b) => {
@@ -775,6 +798,20 @@ const Products = () => {
         </p>
       </div>
 
+      {/* ✅ Input de búsqueda */}
+      <div className="mb-6 md:hidden"> {/* Ocultar en desktop ya que está en header */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, descripción o SKU..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full pl-10 pr-4 py-3 rounded-lg border ${classes.filterInput} ${classes.filterInputFocus}`}
+          />
+        </div>
+      </div>
+
       <div className={`flex flex-col lg:flex-row gap-4 mb-8 p-4 ${classes.filterBg} rounded-lg`}>
         <div className="flex-1">
           <label className={`${classes.filterLabel} block text-sm font-medium mb-2`}>
@@ -810,7 +847,9 @@ const Products = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {filteredProducts.map(product => (
-          <ProductCard key={product.id} product={product} />
+          <div key={product.id} onClick={() => showProductDetail(product)} className="cursor-pointer">
+            <ProductCard product={product} />
+          </div>
         ))}
       </div>
 
@@ -818,7 +857,7 @@ const Products = () => {
         <div className="text-center py-12">
           <div className="text-4xl mb-4">📦</div>
           <p className="text-gray-500 text-lg">
-            No se encontraron productos en esta categoría
+            No se encontraron productos
           </p>
         </div>
       )}
@@ -1412,13 +1451,105 @@ const Footer = () => {
   );
 };
 
+// ✅ Nuevo componente: ProductDetailModal (para mostrar detalle e imagen grande)
+const ProductDetailModal = ({ product, onClose }) => {
+  const { addToCart } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const { classes } = useTheme();
+  const { getPricingInfo } = usePricing();
+
+  if (!product) return null;
+
+  const pricingInfo = getPricingInfo(product);
+
+  const handleAddToCart = () => {
+    addToCart(product, quantity);
+    onClose();  // Cierra el modal después de agregar
+  };
+
+  // Preparar imágenes para carousel o mostrar grande
+  const getProductImages = () => {
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.filter(img => img && !img.includes('placeholder'));
+    }
+    if (product.imageUrl && !product.imageUrl.includes('placeholder')) {
+      return [product.imageUrl];
+    }
+    return [];
+  };
+
+  const productImages = getProductImages();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={onClose}>
+      <div className="bg-white p-6 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold">{product.name}</h2>
+          <button onClick={onClose}><X className="w-6 h-6" /></button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Imagen grande o carousel */}
+          <div className="relative h-64 md:h-96 bg-gray-200">
+            {productImages.length > 0 ? (
+              <ProductImageCarousel images={productImages} productName={product.name} autoPlay={true} interval={3000} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-6xl">✨</div>
+            )}
+          </div>
+
+          {/* Detalles */}
+          <div className="space-y-4">
+            <p className="text-lg">{product.description}</p>
+            <div className="text-2xl font-bold">${(product.price || 0).toLocaleString()}</div>
+            {pricingInfo?.hasDiscount && <div className="text-green-600">-{pricingInfo.discount}% Descuento</div>}
+            {/* <div>Stock disponible: {product.stock}</div> */}
+            {product.sku && <div>SKU: {product.sku}</div>}
+
+            <div className="flex items-center gap-4">
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus /></button>
+              <span>{quantity}</span>
+              <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}><Plus /></button>
+            </div>
+
+            <button 
+              onClick={handleAddToCart} 
+              disabled={product.stock === 0} 
+              className={`${classes.buttonPrimary} w-full py-3 rounded-lg`}
+            >
+              {product.stock === 0 ? 'Agotado' : 'Agregar al Carrito'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ✅ Componente principal con routing Y SISTEMA DE TEMAS
 const AppContent = () => {
   const [currentView, setCurrentView] = useState('home');
   const { user, isAdmin } = useAuth();
   const { addToCart } = useCart();
   const { theme } = useTheme();
+  const [searchQuery, setSearchQuery] = useState(''); // ✅ NUEVO: Estado para la búsqueda
+  const [selectedProduct, setSelectedProduct] = useState(null); // ✅ NUEVO: Estado para el modal de detalle
 
+  // ✅ NUEVA FUNCIÓN: Maneja el clic en la lupa del Header
+  const handleSiteSearch = () => {
+    setCurrentView('products');
+    // NOTA: No limpiamos setSearchQuery aquí, para que si regresa, conserve el texto
+  };
+
+  // ✅ NUEVA FUNCIÓN: Abre el modal de detalle
+  const showProductDetail = (product) => {
+    setSelectedProduct(product);
+  };
+
+  // ✅ NUEVA FUNCIÓN: Cierra el modal de detalle
+  const closeProductDetail = () => {
+    setSelectedProduct(null);
+  };
   // ✅ Detectar ruta de URL (para QR)
   useEffect(() => {
     const hash = window.location.hash;
@@ -1443,7 +1574,13 @@ const AppContent = () => {
       case 'productSearch':
         return <ProductSearch onAddToCart={addToCart} onClose={() => setCurrentView('home')} />;
       case 'products':
-        return <Products />;
+        return (
+          <Products 
+            searchQuery={searchQuery} // ✅ PASAR QUERY
+            setSearchQuery={setSearchQuery} // ✅ PASAR SETTER
+            showProductDetail={showProductDetail} // ✅ PASAR FUNCIÓN DE MODAL
+          />
+        );
       case 'membership':
         return <Membership />;
       case 'about':
@@ -1464,9 +1601,11 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header currentView={currentView} setCurrentView={setCurrentView} />
+      <Header currentView={currentView} setCurrentView={setCurrentView} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <Cart />
       {renderCurrentView()}
+      {/* ✅ Renderizar modal de detalle si hay producto seleccionado */}
+      <ProductDetailModal product={selectedProduct} onClose={closeProductDetail} />
       <Footer />
     </div>
   );
@@ -1474,6 +1613,7 @@ const AppContent = () => {
 
 // Componente raíz de la App
 const App = () => {
+  
   return (
     <AuthProvider>
       <CartProvider> {/* Este debe ser el provider actualizado con cashback */}

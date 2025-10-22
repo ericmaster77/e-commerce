@@ -107,11 +107,11 @@ const ProductImageCarousel = ({ images, productName, autoPlay = true, interval =
         )}
 
         {/* Real Image Badge */}
-        {showImage && !imageError && (
+        {/* {showImage && !imageError && (
           <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
             📸
           </div>
-        )}
+        )} */}
 
         {/* Image Counter - Only show if multiple images */}
         {hasMultipleImages && showImage && (
