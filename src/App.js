@@ -43,7 +43,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
     <>
       <header className={`${classes.header} sticky top-0 z-50 transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 md:h-20">
+          <div className="flex justify-between items-center h-10 md:h-14 lg:h-20">
             {/* Logo MODIFICADO: Solo muestra la imagen grande y utiliza nuevas rutas */}
             <div 
               // Quité el espacio lateral ya que solo hay un elemento
@@ -54,7 +54,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
                 src={isMinimal ? "/logo-rosa-oliva_full-black.png" : "/logo-rosa-oliva_full-green2.png"}
                 alt="Rosa Oliva Logo" 
                 // Aumenté el tamaño para que sea más visible y ocupe el área del texto
-                className="w-40 h-full md:w-48 object-contain py-1"
+                className="w-24 h-full md:w-36 lg:w-48 object-contain py-1"
               />
               {/* Se eliminó el div con el texto del logo */}
             </div>
@@ -65,7 +65,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
                 onClick={() => setCurrentView('home')}
                 className={`text-sm lg:text-base font-medium transition-colors ${
                   currentView === 'home' 
-                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primary font-semibold'
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primaryText font-semibold'
                     : `${classes.headerText} ${classes.linkHover}`
                 }`}
               >
@@ -75,7 +75,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
                 onClick={() => setCurrentView('products')}
                 className={`text-sm lg:text-base font-medium transition-colors ${
                   currentView === 'products' 
-                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primary font-semibold'
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primaryText font-semibold'
                     : `${classes.headerText} ${classes.linkHover}`
                 }`}
               >
@@ -110,7 +110,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
                 onClick={() => setCurrentView('membership')}
                 className={`text-sm lg:text-base font-medium transition-colors ${
                   currentView === 'membership' 
-                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primary font-semibold'
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primaryText font-semibold'
                     : `${classes.headerText} ${classes.linkHover}`
                 }`}
               >
@@ -120,7 +120,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
                 onClick={() => window.open('#/buscar-producto','_blank')}
                 className={`text-sm lg:text-base font-medium transition-colors ${
                   currentView === 'membership' 
-                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primary font-semibold'
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primaryText font-semibold'
                     : `${classes.headerText} ${classes.linkHover}`
                 }`}
               >
@@ -130,7 +130,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
                 onClick={() => setCurrentView('about')}
                 className={`text-sm lg:text-base font-medium transition-colors ${
                   currentView === 'about' 
-                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primary font-semibold'
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primaryText font-semibold'
                     : `${classes.headerText} ${classes.linkHover}`
                 }`}
               >
@@ -508,8 +508,8 @@ const ProductCard = ({ product }) => {
 
         {product.sku && (
           <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
-            SKU: {product.sku}
-            {product.excel?.lote && ` • Lote: ${product.excel.lote}`}
+            Código: {product.sku}
+            {/* {product.excel?.lote && ` • Lote: ${product.excel.lote}`} */}
           </div>
         )}
       </div>
@@ -566,9 +566,9 @@ const Home = ({ setCurrentView }) => {
   return (
     <div>
       {/* Banner Carousel */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+      {/* <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         <BannerCarousel />
-      </section>
+      </section> */}
 
       {/* Hero Section */}
       <section className={`${classes.hero} py-12 md:py-16`}>
@@ -1143,13 +1143,13 @@ const Membership = () => {
               Venta a Medio Mayoreo
             </h3>
             <p className={`${classes.missionText} mb-4 text-sm md:text-base`}>
-              Para compras mínimas de $2,500 MXN, obtén un 25% de descuento.
+              Para compras mínimas de $5,000 MXN, obtén un 25% de descuento.
             </p>
             <div className={`${classes.membershipCard} p-3 rounded`}>
               <div className={`${classes.membershipPrice} font-semibold`}>
                 25% de descuento
               </div>
-              <div className="text-sm text-gray-600">Compra mínima: $2,500 MXN</div>
+              <div className="text-sm text-gray-600">Compra mínima: $5,000 MXN</div>
             </div>
           </div>
 
@@ -1158,13 +1158,13 @@ const Membership = () => {
               Venta a Mayoreo
             </h3>
             <p className={`${classes.missionText} mb-4 text-sm md:text-base`}>
-              Si tu compra mínima es de $5,000 MXN, te ofrecemos un 50% de descuento.
+              Si tu compra mínima es de $10,000 MXN, te ofrecemos un 50% de descuento.
             </p>
             <div className={`${classes.membershipCard} p-3 rounded`}>
               <div className={`${classes.membershipPrice} font-semibold`}>
                 50% de descuento
               </div>
-              <div className="text-sm text-gray-600">Compra mínima: $5,000 MXN</div>
+              <div className="text-sm text-gray-600">Compra mínima: $10,000 MXN</div>
             </div>
           </div>
         </div>
@@ -1374,7 +1374,7 @@ const Footer = () => {
             <h3 className={`${classes.footerTitle} text-base md:text-lg font-semibold mb-3 md:mb-4`}>
               Síguenos
             </h3>
-            <div className="space-y-3">
+            <div className="flex items-center gap-3">
               {socialMedia.facebook && (
                 <a 
                   href={socialMedia.facebook}
@@ -1603,6 +1603,12 @@ const AppContent = () => {
     <div className="min-h-screen bg-gray-50">
       <Header currentView={currentView} setCurrentView={setCurrentView} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <Cart />
+       {/* ✅ Banner FUERA del switch, pero solo en home */}
+    {currentView === 'home' && (
+      <section className="w-full">
+        <BannerCarousel />
+      </section>
+    )}
       {renderCurrentView()}
       {/* ✅ Renderizar modal de detalle si hay producto seleccionado */}
       <ProductDetailModal product={selectedProduct} onClose={closeProductDetail} />

@@ -36,10 +36,10 @@ const KitEmprendedor = () => {
             }`}>
               <div className="mb-4">
                 <div className="text-sm uppercase tracking-wide opacity-90">Precio Especial</div>
-                <div className="text-5xl font-bold my-3">$2,500</div>
-                <div className="text-lg line-through opacity-70">$5,000</div>
+                <div className="text-5xl font-bold my-3">$5,000</div>
+                <div className="text-lg line-through opacity-70">$10,000</div>
                 <div className="mt-2 inline-block bg-white/20 px-3 py-1 rounded-full text-sm">
-                  50% de Descuento
+                  25% y 50% de Descuento
                 </div>
               </div>
               

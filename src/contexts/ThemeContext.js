@@ -35,17 +35,18 @@ export const ThemeProvider = ({ children }) => {
 
   const themes = {
     colorful: {
-      primary: '#d4a574',
+      primary: '#ffffffff',
       secondary: '#2596be',
-      dark: '#90983d',
-      light: '#f3e5d8',
+      dark: '#7e8771', // <-- opcional mantener referencia
+      light: '#ffffffff',
       accent: '#7a8131',
       
       bg: {
         main: 'bg-gray-50',
         card: 'bg-white',
-        gradient: 'bg-gradient-to-r from-[#90983d] to-[#7a8131]',
-        headerGradient: 'bg-gradient-to-r from-[#90983d] to-[#7a8131]',
+        // Usar color sólido para header/gradiente (sin gradientes)
+        gradient: 'bg-[#7e8771]',
+        headerGradient: 'bg-[#7e8771]',
         heroGradient: 'bg-gradient-to-br from-rosa-light to-white',
         footerGradient: 'bg-gradient-to-br from-gray-900 to-gray-800'
       },
@@ -100,7 +101,7 @@ export const ThemeProvider = ({ children }) => {
       }
     }
   };
-
+  
   const currentTheme = themes[theme];
   const isMinimal = theme === 'minimal';
   const isColorful = theme === 'colorful';
@@ -117,7 +118,7 @@ export const ThemeProvider = ({ children }) => {
       // ========== HEADER ==========
       header: isMinimal 
         ? 'bg-white shadow-sm border-b border-gray-200' 
-        : 'bg-gradient-to-r from-[#90983d] to-[#7a8131] shadow-md',
+        : `${currentTheme.bg.headerGradient} shadow-md`, // <-- ahora usa el color sólido #7e8771
       headerText: isMinimal ? 'text-gray-900' : 'text-gray-700',
       headerLogo: isMinimal ? 'text-black' : 'text-rosa-dark',
       linkHover: isMinimal ? 'hover:text-black' : 'hover:text-rosa-primary',

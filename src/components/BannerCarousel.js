@@ -7,7 +7,10 @@ const BannerCarousel = () => {
   const { banners, loading } = useActiveBanners();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-
+  console.log('🎨 BannerCarousel render:', { 
+    bannersCount: banners.length, 
+    loading 
+  });
   // Auto-advance every 5 seconds (solo para imágenes/GIF, no para videos)
   useEffect(() => {
     if (!isAutoPlaying || banners.length <= 1) return;
@@ -77,7 +80,7 @@ const BannerCarousel = () => {
   }
 
   return (
-    <div className="relative w-full h-64 md:h-96 lg:h-[500px] overflow-hidden bg-gray-900 rounded-xl group">
+<div className="relative w-full h-[calc(100vh-40px)] md:h-[calc(100vh-56px)] lg:h-[calc(100vh-80px)] overflow-hidden bg-gray-900 group">
       {/* Banner Content (Images or Videos) */}
       {banners.map((banner, index) => {
         const mediaType = banner.mediaType || getMediaType(banner.imageUrl);
@@ -117,11 +120,11 @@ const BannerCarousel = () => {
             {banner.title && (
               <div className="absolute bottom-8 left-8 text-white pointer-events-none">
                 <h2 className="text-2xl md:text-4xl font-bold drop-shadow-lg">
-                  {banner.title}
+                  {/* {banner.title} */}
                 </h2>
                 {mediaType === 'video' && (
                   <span className="inline-block mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded-full">
-                    🎥 VIDEO
+                    {/* 🎥 VIDEO */}
                   </span>
                 )}
               </div>

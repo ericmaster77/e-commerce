@@ -324,9 +324,9 @@ const ProductCard = ({ product, addToCart }) => {
 
           <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
 
-            SKU: {product.sku}
+            Código: {product.sku}
 
-            {product.excel?.lote && ` • Lote: ${product.excel.lote}`}
+            {/* {product.excel?.lote && ` • Lote: ${product.excel.lote}`} */}
 
           </div>
 
