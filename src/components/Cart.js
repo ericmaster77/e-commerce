@@ -127,7 +127,7 @@ const Cart = () => {
                       ¡{volumeDiscount.discountPercentage}% de Descuento!
                     </div>
                     <div className="text-xs opacity-80">
-                      Nivel {volumeDiscount.tierInfo.name}
+                      {volumeDiscount.tierInfo.name} {/*Nivel de Descuento*/}
                     </div>
                   </div>
                 </div>

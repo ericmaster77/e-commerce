@@ -1,6 +1,6 @@
 // src/App.js - CON INTEGRACIÓN DE QR, BÚSQUEDA POR SKU Y SISTEMA DE TEMAS
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, User, Search, Menu, X, Plus, Minus, Star, Filter, MapPin, Phone, Mail, Palette, QrCode } from 'lucide-react';
+import { ShoppingCart, Clock, User, Search, Menu, X, Plus, Minus, Star, Filter, MapPin, Phone, Mail, Palette, QrCode } from 'lucide-react';
 import AdminPanel from './components/AdminPanel';
 import BannerCarousel from './components/BannerCarousel';
 import SiteConfigPanel from './components/SiteConfigPanel';
@@ -16,6 +16,8 @@ import QRDisplay from './components/QRDisplay';
 import { CartProvider, useCart } from './contexts/CartContext';
 import Cart from './components/Cart'; // Importa el componente Cart desde su archivo separado
 import ProductImageCarousel from './components/ProductImageCarousel';
+import ContactLocation from './components/ContactLocation';
+import { Analytics } from "@vercel/analytics/react"
 
 // ✅ Componente Header CON SISTEMA DE TEMAS
 const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) => {
@@ -136,7 +138,16 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
               >
                 Nosotros
               </button>
-
+              <button 
+                onClick={() => setCurrentView('contact')}
+                className={`text-sm lg:text-base font-medium transition-colors ${
+                  currentView === 'membership' 
+                    ? isMinimal ? 'text-black font-semibold' : 'text-rosa-primaryText font-semibold'
+                    : `${classes.headerText} ${classes.linkHover}`
+                }`}
+              >
+                Contacto
+              </button>
               {/* ✅ TOGGLE DE TEMA - DESKTOP */}
               <button
                 onClick={toggleTheme}
@@ -341,7 +352,7 @@ const Header = ({ currentView, setCurrentView, searchQuery, setSearchQuery }) =>
 
 // Componente ProductCard actualizado con temas
 const ProductCard = ({ product }) => {
-  const { addToCart } = useCart();
+  const { addToCart, setIsCartOpen } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -354,6 +365,7 @@ const ProductCard = ({ product }) => {
   const handleAddToCart = () => {
     addToCart(product, quantity);
     setQuantity(1);
+    setIsCartOpen(true);
   };
 
   const handleImageLoad = () => {
@@ -716,6 +728,59 @@ const Home = ({ setCurrentView }) => {
               <p className={`${classes.missionText} text-sm md:text-base`}>
                 Para que alcancen la libertad y el éxito que merecen, en cualquier lugar del mundo.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* Contact CTA Banner */}
+      <section className="w-full relative overflow-hidden">
+        <div className="relative h-[400px] md:h-[500px] lg:h-[600px]">
+          {/* Imagen de fondo */}
+          <img 
+            src="/contact-banner.jpg" 
+            alt="Visítanos - Rosa Oliva Joyería"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1600&h=900&fit=crop';
+            }}
+          />
+          
+          {/* Overlay oscuro */}
+          <div className="absolute inset-0 bg-black/50" />
+          
+          {/* Contenido centrado */}
+          <div className="absolute inset-0 flex items-center justify-center px-4">
+            <div className="text-center text-white max-w-3xl">
+              <div className="mb-4">
+                {/* <span className="text-5xl md:text-6xl lg:text-7xl">📍</span> */}
+              </div>
+              
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
+                Visítanos o Contáctanos
+              </h2>
+              
+              <p className="text-lg md:text-xl lg:text-2xl mb-6 md:mb-8 opacity-90">
+                Estamos aquí para ayudarte. Conoce nuestra ubicación y envíanos tus consultas.
+              </p>
+              
+              <button
+                onClick={() => setCurrentView('contact')}
+                className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-verde-oliva text-white text-lg md:text-xl font-bold rounded-xl transition-all transform hover:scale-105 hover:bg-verde-oliva-hover shadow-2xl"
+              >
+                <MapPin className="w-6 h-6 md:w-7 md:h-7" />
+                Contacto y Ubicación
+              </button>
+              
+              <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-6 text-sm md:text-base opacity-80">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5" />
+                  <span>Oaxaca de Juárez, México</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  <span>Lun - Vie: 9:00 AM - 8:00 PM</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1301,7 +1366,7 @@ const About = () => {
 };
 
 // Componente Footer actualizado con temas
-const Footer = () => {
+const Footer = ({setCurrentView}) => {
   const { config, loading } = useSiteConfig();
   const { classes } = useTheme(); // ✅ AGREGAR
   const socialMedia = config?.socialMedia || {};
@@ -1355,7 +1420,7 @@ const Footer = () => {
             </h3>
             <ul className={`space-y-2 ${classes.footerText} text-sm`}>
               <li>
-                <a href="#" className={classes.footerLink}>Contacto</a>
+                <a  href="#" onClick={(e) => { e.preventDefault(); setCurrentView && setCurrentView('contact'); window.scrollTo(0,0); }} className={classes.footerLink}>Contacto</a>
               </li>
               <li>
                 <a href="#" className={classes.footerLink}>Envíos</a>
@@ -1453,18 +1518,25 @@ const Footer = () => {
 
 // ✅ Nuevo componente: ProductDetailModal (para mostrar detalle e imagen grande)
 const ProductDetailModal = ({ product, onClose }) => {
-  const { addToCart } = useCart();
+  const { addToCart, setIsCartOpen } = useCart();
   const [quantity, setQuantity] = useState(1);
   const { classes } = useTheme();
   const { getPricingInfo } = usePricing();
+
+  // AGREGAR después de los hooks
+  useEffect(() => {
+    setQuantity(1);
+  }, [product?.id]);
 
   if (!product) return null;
 
   const pricingInfo = getPricingInfo(product);
 
+  // DESPUÉS
   const handleAddToCart = () => {
     addToCart(product, quantity);
-    onClose();  // Cierra el modal después de agregar
+    setIsCartOpen(true); // ← AGREGAR
+    onClose();
   };
 
   // Preparar imágenes para carousel o mostrar grande
@@ -1504,7 +1576,7 @@ const ProductDetailModal = ({ product, onClose }) => {
             <div className="text-2xl font-bold">${(product.price || 0).toLocaleString()}</div>
             {pricingInfo?.hasDiscount && <div className="text-green-600">-{pricingInfo.discount}% Descuento</div>}
             {/* <div>Stock disponible: {product.stock}</div> */}
-            {product.sku && <div>SKU: {product.sku}</div>}
+            {product.sku && <div>Código: {product.sku}</div>}
 
             <div className="flex items-center gap-4">
               <button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus /></button>
@@ -1557,7 +1629,6 @@ const AppContent = () => {
       setCurrentView('productSearch');
     }
   }, []);
-
   // ✅ Aplicar tema al body
   useEffect(() => {
     document.body.className = theme === 'minimal' ? 'theme-minimal' : 'theme-colorful';
@@ -1585,6 +1656,8 @@ const AppContent = () => {
         return <Membership />;
       case 'about':
         return <About />;
+      case 'contact':
+        return <ContactLocation />;
       default:
         return <Home setCurrentView={setCurrentView} />;
     }
@@ -1612,7 +1685,7 @@ const AppContent = () => {
       {renderCurrentView()}
       {/* ✅ Renderizar modal de detalle si hay producto seleccionado */}
       <ProductDetailModal product={selectedProduct} onClose={closeProductDetail} />
-      <Footer />
+      <Footer setCurrentView={setCurrentView} />
     </div>
   );
 };
@@ -1624,6 +1697,7 @@ const App = () => {
     <AuthProvider>
       <CartProvider> {/* Este debe ser el provider actualizado con cashback */}
         <AppContent />
+        <Analytics />
       </CartProvider>
     </AuthProvider>
   );

@@ -21,6 +21,7 @@ const SiteConfigPanel = () => {
     instagram: '',
     whatsapp: '',
     email: '',
+    contactEmail: '',
     phone: ''
   });
   
@@ -477,7 +478,25 @@ const SiteConfigPanel = () => {
                 disabled={isSaving}
               />
             </div>
-
+            {/* Email de Contacto */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <Mail className="w-5 h-5 mr-2 text-blue-600" />
+                Email de Contacto (Quejas y Sugerencias)
+              </label>
+              <input
+                type="email"
+                name="contactEmail"
+                value={socialData.contactEmail}
+                onChange={handleSocialChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rosa-secondary"
+                placeholder="arturounda21@gmail.com"
+                disabled={isSaving}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Este email recibirá los mensajes del formulario de contacto.
+              </p>
+            </div>
             {/* Botón guardar */}
             <div className="flex justify-end pt-4">
               <button

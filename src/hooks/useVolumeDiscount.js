@@ -57,20 +57,20 @@ export const useVolumeDiscount = (subtotal) => {
     switch (discountInfo.discountTier) {
       case 'platinum':
         return {
-          name: 'Platino',
+          name: 'Precio socio',
           color: 'purple',
           bgColor: 'bg-purple-100',
           textColor: 'text-purple-800',
-          icon: '💎',
+          icon: '',
           message: '¡Felicidades! Obtienes el máximo descuento del 50%'
         };
       case 'gold':
         return {
-          name: 'Oro',
+          name: 'Precio preferencial',
           color: 'yellow',
           bgColor: 'bg-yellow-100',
           textColor: 'text-yellow-800',
-          icon: '🏆',
+          icon: '',
           message: `¡Genial! Tienes 25% de descuento. Agrega $${discountInfo.savingsToNextTier.toLocaleString()} más para obtener 50% de descuento`
         };
       default:

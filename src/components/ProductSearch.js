@@ -225,7 +225,7 @@ const ProductDetailCard = ({ product, onAddToCart, getPricingInfo, getPricingLev
       </div>
 
       {/* Imagen del producto */}
-      <div className="relative h-64 md:h-80 bg-gradient-to-br from-rosa-light to-rosa-primary">
+      <div className="relative h-64 md:h-80">
         {imageToShow ? (
           <img 
             src={imageToShow}
@@ -269,7 +269,7 @@ const ProductDetailCard = ({ product, onAddToCart, getPricingInfo, getPricingLev
             <Package className="w-4 h-4 text-rosa-secondary" />
             <span className="text-gray-700">{product.category}</span>
           </div>
-          <div className="flex items-center space-x-1">
+          {/* <div className="flex items-center space-x-1">
             {[...Array(5)].map((_, i) => (
               <Star 
                 key={i}
@@ -281,7 +281,7 @@ const ProductDetailCard = ({ product, onAddToCart, getPricingInfo, getPricingLev
               />
             ))}
             <span className="text-gray-700 ml-1">({product.rating})</span>
-          </div>
+          </div> */}
         </div>
 
         {/* Descripción */}
@@ -331,11 +331,11 @@ const ProductDetailCard = ({ product, onAddToCart, getPricingInfo, getPricingLev
 
         {/* Stock */}
         <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-          <span className="text-sm font-medium text-gray-700">Disponibilidad:</span>
+          {/* <span className="text-sm font-medium text-gray-700">Disponibilidad:</span> */}
           <span className={`text-sm font-bold ${
             product.stock > 0 ? 'text-green-600' : 'text-red-600'
           }`}>
-            {product.stock > 0 ? `${product.stock} unidades disponibles` : 'Agotado'}
+            {/* {product.stock > 0 ? `${product.stock} unidades disponibles` : 'Agotado'} */}
           </span>
         </div>
 
@@ -353,7 +353,7 @@ const ProductDetailCard = ({ product, onAddToCart, getPricingInfo, getPricingLev
         {/* Info adicional */}
         {product.excel?.lote && (
           <div className="text-xs text-gray-500 text-center pt-2 border-t">
-            Lote: {product.excel.lote}
+            {/* Lote: {product.excel.lote} */}
           </div>
         )}
       </div>
